@@ -1,3 +1,10 @@
+# All files and folders beginning with a period except .gitignore
+.*
+!/.gitignore
+
+# Build folders
+build/
+
 # Prerequisites
 *.d
 
