@@ -21,7 +21,8 @@ class win32 {
      
      win32();
      window make_window(const wchar_t* name, event_dispatcher* dispatch);
-
+     void process_messages();
+     
   private:
      static LRESULT CALLBACK message_handler(HWND hWnd, uint32_t uMsg, WPARAM wParam, LPARAM lParam);
      HINSTANCE hInstance_ {};

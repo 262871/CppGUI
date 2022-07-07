@@ -11,11 +11,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
      auto window   = platform.make_window(L"Vulkan win32", &user);
 
      while (!user.should_quit) {
-          MSG message;
-          while (PeekMessageW(&message, NULL, 0, 0, PM_REMOVE)) {
-               TranslateMessage(&message);
-               DispatchMessageW(&message);
-          }
+          platform.process_messages();
      }
 
      return 0;

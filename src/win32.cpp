@@ -37,6 +37,14 @@ win32::window win32::make_window(const wchar_t* name, event_dispatcher* dispatch
      return window(hWnd);
 }
 
+void win32::process_messages() {
+     MSG message;
+     while (PeekMessageW(&message, NULL, 0, 0, PM_REMOVE)) {
+          TranslateMessage(&message);
+          DispatchMessageW(&message);
+     }
+}
+
 LRESULT CALLBACK win32::message_handler(HWND hWnd, uint32_t uMsg, WPARAM wParam, LPARAM lParam) {
      event_dispatcher* window_user { nullptr };
      if (uMsg == WM_CREATE) {
