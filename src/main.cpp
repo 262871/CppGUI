@@ -1,13 +1,14 @@
-#include "vulkan_manager.hpp"
+#include "DebugMessenger.hpp"
+#include "Instance.hpp"
 #include "win32.hpp"
-#include "window.hpp"
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
-     struct data {
-          bool should_quit { false };
-     } user;
-     vulkan::get_instance_ref();
-     auto  w  = window<win32>(L"Vulkan win32", &user);
+     auto instance  = Instance();
+     auto messenger = DebugMessenger(instance.get());
+
+     auto user     = event_dispatcher();
+     auto platform = win32();
+     auto window   = platform.make_window(L"Vulkan win32", &user);
 
      while (!user.should_quit) {
           MSG message;
