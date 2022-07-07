@@ -11,7 +11,7 @@ win32::window::~window() {
 win32::win32()
    : hInstance_(GetModuleHandleW(0)) {}
 
-win32::window win32::make_window(const wchar_t* name, event_dispatcher* dispatch) {
+win32::window win32::make_window(const wchar_t* name, event_hub* dispatch) {
      WNDCLASSEXW wcx {
           .cbSize        = sizeof(WNDCLASSEX),
           .style         = CS_DBLCLKS,
@@ -46,20 +46,20 @@ void win32::process_messages() {
 }
 
 LRESULT CALLBACK win32::message_handler(HWND hWnd, uint32_t uMsg, WPARAM wParam, LPARAM lParam) {
-     event_dispatcher* window_user { nullptr };
+     event_hub* window_user { nullptr };
      if (uMsg == WM_CREATE) {
           auto pCreate = reinterpret_cast<CREATESTRUCT*>(lParam);
-          window_user  = reinterpret_cast<event_dispatcher*>(pCreate->lpCreateParams);
+          window_user  = reinterpret_cast<event_hub*>(pCreate->lpCreateParams);
           SetWindowLongPtrW(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(pCreate->lpCreateParams));
      }
      else
-          window_user = reinterpret_cast<event_dispatcher*>(GetWindowLongPtrW(hWnd, GWLP_USERDATA));
+          window_user = reinterpret_cast<event_hub*>(GetWindowLongPtrW(hWnd, GWLP_USERDATA));
 
      switch (uMsg) {
           case WM_ERASEBKGND:
                return 1;
           case WM_CLOSE:
-               window_user->should_quit = true;
+               window_user->close_dispatcher.signal();
                return 0;
           case WM_DESTROY:
                PostQuitMessage(0);

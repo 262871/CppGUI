@@ -4,10 +4,10 @@
 
 #include <stdexcept>
 
-class Instance {
+class instance {
   public:
-     Instance();
-     ~Instance();
+     instance();
+     ~instance();
      VkInstance get();
      
   private:

@@ -7,14 +7,14 @@
 
 #include <stdexcept>
 
-class DebugMessenger {
+class debug_messenger {
   public:
-     DebugMessenger(VkInstance instance);
-     ~DebugMessenger();
-     
+     debug_messenger(VkInstance instance);
+     ~debug_messenger();
+
   private:
      static VKAPI_ATTR VkBool32 VKAPI_CALL callback(VkDebugUtilsMessageSeverityFlagBitsEXT level, VkDebugUtilsMessageTypeFlagsEXT, const VkDebugUtilsMessengerCallbackDataEXT* warn, void*);
-     
-     VkInstance instance_ {};
+
+     VkInstance               instance_ {};
      VkDebugUtilsMessengerEXT debug_messenger_ {};
 };

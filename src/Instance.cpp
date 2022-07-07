@@ -1,6 +1,6 @@
-#include "Instance.hpp"
+#include "instance.hpp"
 
-Instance::Instance() {
+instance::instance() {
      if (volkInitialize() != VK_SUCCESS)
           throw std::runtime_error("call to volkInitialize failed");
 
@@ -35,10 +35,10 @@ Instance::Instance() {
      volkLoadInstance(instance_);
 }
 
-Instance::~Instance() {
+instance::~instance() {
      vkDestroyInstance(instance_, nullptr);
 }
 
-VkInstance Instance::get() {
+VkInstance instance::get() {
      return instance_;
 }

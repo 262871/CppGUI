@@ -1,12 +1,10 @@
 #pragma once
 
+#include "event_dispatcher.hpp"
+
 #include <windows.h>
 
 #include <stdexcept>
-
-struct event_dispatcher {
-     bool should_quit {false};
-};
 
 class win32 {
   public:
@@ -20,7 +18,7 @@ class win32 {
      };
      
      win32();
-     window make_window(const wchar_t* name, event_dispatcher* dispatch);
+     window make_window(const wchar_t* name, event_hub* dispatch);
      void process_messages();
      
   private:

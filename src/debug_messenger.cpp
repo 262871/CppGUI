@@ -1,6 +1,6 @@
-#include "DebugMessenger.hpp"
+#include "debug_messenger.hpp"
 
-DebugMessenger::DebugMessenger(VkInstance instance)
+debug_messenger::debug_messenger(VkInstance instance)
    : instance_(instance) {
      VkDebugUtilsMessengerCreateInfoEXT debug_messenger_info {
           .sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
@@ -16,11 +16,11 @@ DebugMessenger::DebugMessenger(VkInstance instance)
           throw std::runtime_error("call to vkCreateDebugUtilsMessengerEXT failed");
 }
 
-DebugMessenger::~DebugMessenger() {
+debug_messenger::~debug_messenger() {
      vkDestroyDebugUtilsMessengerEXT(instance_, debug_messenger_, nullptr);
 }
 
-VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessenger::callback(VkDebugUtilsMessageSeverityFlagBitsEXT level, VkDebugUtilsMessageTypeFlagsEXT, const VkDebugUtilsMessengerCallbackDataEXT* warn, void*) {
+VKAPI_ATTR VkBool32 VKAPI_CALL debug_messenger::callback(VkDebugUtilsMessageSeverityFlagBitsEXT level, VkDebugUtilsMessageTypeFlagsEXT, const VkDebugUtilsMessengerCallbackDataEXT* warn, void*) {
      if (level > VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
           fmt::print(stderr, "Error: {}\n", warn->pMessage);
      else if (level != VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
