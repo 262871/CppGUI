@@ -58,7 +58,8 @@ class event_dispatcher {
      }
 };
 
-class event_hub {
+class event_system {
   public:
-     event_dispatcher<std::function<void(void)>> close_dispatcher{};
+     bool should_close {false};
+     // event_dispatcher<std::function<void(void)>> close_dispatcher{};
 };
