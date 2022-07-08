@@ -1,5 +1,7 @@
 #include "win32.hpp"
 
+#include <stdexcept>
+
 win32::window::window(HWND hWnd)
    : hWnd_(hWnd) {
 }

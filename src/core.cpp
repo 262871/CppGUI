@@ -1,6 +1,8 @@
-#include "instance.hpp"
+#include "core.hpp"
 
-instance::instance() {
+#include <stdexcept>
+
+core::core(std::vector<const char*> const& extensions, std::vector<const char*> const& layers) {
      if (volkInitialize() != VK_SUCCESS)
           throw std::runtime_error("call to volkInitialize failed");
 
@@ -16,29 +18,23 @@ instance::instance() {
           .engineVersion      = 1,
           .apiVersion         = version
      };
-     auto layers = "VK_LAYER_KHRONOS_validation";
 
-     auto                 debug_ext { VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
      VkInstanceCreateInfo instance_create_info {
           .sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
           .pNext                   = nullptr,
           .flags                   = {},
           .pApplicationInfo        = &application_info,
-          .enabledLayerCount       = 1,
-          .ppEnabledLayerNames     = &layers,
-          .enabledExtensionCount   = 1,
-          .ppEnabledExtensionNames = &debug_ext
+          .enabledLayerCount       = static_cast<uint32_t>(layers.size()),
+          .ppEnabledLayerNames     = layers.data(),
+          .enabledExtensionCount   = static_cast<uint32_t>(extensions.size()),
+          .ppEnabledExtensionNames = extensions.data()
      };
-     if (vkCreateInstance(&instance_create_info, nullptr, &instance_) != VK_SUCCESS)
+     if (vkCreateInstance(&instance_create_info, allocator, &instance) != VK_SUCCESS)
           throw std::runtime_error("call to vkCreateInstance failed");
 
-     volkLoadInstance(instance_);
+     volkLoadInstance(instance);
 }
 
-instance::~instance() {
-     vkDestroyInstance(instance_, nullptr);
-}
-
-VkInstance instance::get() {
-     return instance_;
+core::~core() {
+     vkDestroyInstance(instance, nullptr);
 }
