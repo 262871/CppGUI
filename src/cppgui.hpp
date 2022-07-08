@@ -33,16 +33,18 @@ class cppgui {
         : platform_()
         , engine_core_()
         , debug_(&engine_core_) {}
+
      void initialize() {
           auto name = L"Vulkan and win32";
-          windows_.emplace_back(name, &platform_, &engine_core_);
+          windows_.emplace_back(std::make_unique<window>(name, &platform_, &engine_core_));
+          windows_.emplace_back(std::make_unique<window>(L"Second window", &platform_, &engine_core_));
           device_ = std::make_unique<device>(&engine_core_);
      }
      void run() {
           initialize();
           while (!windows_.empty()) {
                platform_.process_messages();
-               std::erase_if(windows_, [](const window& w) { return w.should_close(); });
+               std::erase_if(windows_, [](const auto& w) { return w->should_close(); });
           }
      }
 
@@ -52,6 +54,6 @@ class cppgui {
 
      debug_messenger debug_;
 
-     std::vector<window>     windows_ {};
-     std::unique_ptr<device> device_;
+     std::vector<std::unique_ptr<window>> windows_ {};
+     std::unique_ptr<device>              device_;
 };

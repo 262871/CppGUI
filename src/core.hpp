@@ -4,9 +4,6 @@
 
 #include <volk.h>
 
-// Can't expand VK_KHR_WIN32_SURFACE_EXTENSION_NAME and remove include. TODO: figure out why
-// #include <vulkan/vulkan_win32.h>
-
 #include <vector>
 #include <stdexcept>
 
