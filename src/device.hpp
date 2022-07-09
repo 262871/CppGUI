@@ -15,10 +15,17 @@ class device {
      device(core* engine_core);
      ~device();
 
+     auto physical() { return physical_device_; }
+     auto logical() { return device_; }
+
+     std::vector<uint32_t>& queue_family_indices() { return queue_family_indecies_; }
+
   private:
      core*            engine_core_;
      VkPhysicalDevice physical_device_;
      VkDevice         device_;
+
+     std::vector<uint32_t> queue_family_indecies_ { 0, 1 };
 };
 
 device::device(core* engine_core)

@@ -71,7 +71,7 @@ LRESULT CALLBACK win32::message_handler(HWND hWnd, uint32_t uMsg, WPARAM wParam,
           case WM_ERASEBKGND:
                return 1;
           case WM_CLOSE:
-               owner->should_close = true;
+               owner->close_dispatcher.signal();
                return 0;
           case WM_DESTROY:
                PostQuitMessage(0);

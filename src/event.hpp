@@ -3,6 +3,7 @@
 #include <concepts>
 #include <functional>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <unordered_map>
 
@@ -36,7 +37,7 @@ class event_dispatcher {
           for (const auto& [subscription, invocable] : subscribers_)
                subscription->invalidate();
      }
-     subscription subscribe(const F& listener) { return subscription(this, listener); }
+     std::unique_ptr<subscription> subscribe(const F& listener) { return std::make_unique<subscription>(this, listener); }
 
      void signal(ArgT... arguments) {
           std::unique_lock lock(subscribers_mutex_);
@@ -61,5 +62,5 @@ class event_dispatcher {
 class event_system {
   public:
      bool should_close {false};
-     // event_dispatcher<std::function<void(void)>> close_dispatcher{};
+     event_dispatcher<std::function<void(void)>> close_dispatcher{};
 };

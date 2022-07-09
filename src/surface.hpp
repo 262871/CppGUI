@@ -35,6 +35,8 @@ class surface {
           vkDestroySurfaceKHR(vulkan_core_->instance(), surface_, vulkan_core_->allocator());
      }
 
+     VkSurfaceKHR surfaceKHR() { return surface_; }
+
   private:
      core*        vulkan_core_;
      VkSurfaceKHR surface_;
