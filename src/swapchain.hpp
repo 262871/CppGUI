@@ -49,16 +49,51 @@ class swapchain {
           swapchain_images_.resize(count);
           if (vkGetSwapchainImagesKHR(device_->logical(), swapchain_, &count, swapchain_images_.data()) != VK_SUCCESS)
                throw std::runtime_error("call to vkGetSwapchainImagesKHR failed");
+          
+          create_image_views();
      }
      ~swapchain() {
+          for (auto& image_view : swapchain_image_views_)
+               vkDestroyImageView(device_->logical(), image_view, vulkan_core_->allocator());
+
+          swapchain_image_views_.clear();
           vkDestroySwapchainKHR(device_->logical(), swapchain_, vulkan_core_->allocator());
      }
+     
+     VkImageView create_image_view(VkImage image, VkFormat format, VkImageAspectFlags aspect_flags, uint32_t mip_levels = 1) {
+          VkImageViewCreateInfo image_view_create_info {
+               .sType      = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+               .pNext      = nullptr,
+               .flags      = {},
+               .image      = image,
+               .viewType   = VK_IMAGE_VIEW_TYPE_2D,
+               .format     = format,
+               .components = {
+                  .r = VK_COMPONENT_SWIZZLE_IDENTITY,
+                  .g = VK_COMPONENT_SWIZZLE_IDENTITY,
+                  .b = VK_COMPONENT_SWIZZLE_IDENTITY,
+                  .a = VK_COMPONENT_SWIZZLE_IDENTITY },
+               .subresourceRange = { .aspectMask = aspect_flags, .baseMipLevel = 0, .levelCount = mip_levels, .baseArrayLayer = 0, .layerCount = 1 }
+          };
+          VkImageView image_view {};
+          if (vkCreateImageView(device_->logical(), &image_view_create_info, vulkan_core_->allocator(), &image_view) != VK_SUCCESS)
+               throw std::runtime_error("call to vkCreateImageView failed");
+          return image_view;
+     }
+     
+     void create_image_views() {
+          swapchain_image_views_.reserve(swapchain_images_.size());
+          for (size_t i = 0; i != swapchain_images_.size(); ++i)
+               swapchain_image_views_.push_back(create_image_view(swapchain_images_[i], swapchain_format_, VK_IMAGE_ASPECT_COLOR_BIT));
+     }
 
+     
   private:
-     device*              device_;
-     core*                vulkan_core_;
-     VkSwapchainKHR       swapchain_;
-     VkExtent2D           swapchain_extent_;
-     std::vector<VkImage> swapchain_images_;
-     VkFormat             swapchain_format_;
+     device*                  device_;
+     core*                    vulkan_core_;
+     VkSwapchainKHR           swapchain_;
+     VkExtent2D               swapchain_extent_;
+     std::vector<VkImage>     swapchain_images_;
+     VkFormat                 swapchain_format_;
+     std::vector<VkImageView> swapchain_image_views_;
 };
