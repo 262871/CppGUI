@@ -7,7 +7,6 @@
 #include <mutex>
 #include <unordered_map>
 
-
 template <typename F, typename... ArgT>
 requires std::invocable<F, ArgT...>
 class event_dispatcher {
@@ -32,6 +31,11 @@ class event_dispatcher {
           friend event_dispatcher;
           void invalidate() { source_ = nullptr; }
      };
+     event_dispatcher()                                   = default;
+     event_dispatcher(const event_dispatcher&)            = delete;
+     event_dispatcher(event_dispatcher&&)                 = delete;
+     event_dispatcher& operator=(const event_dispatcher&) = delete;
+     event_dispatcher& operator=(event_dispatcher&&)      = delete;
      ~event_dispatcher() {
           std::unique_lock lock(subscribers_mutex_);
           for (const auto& [subscription, invocable] : subscribers_)
@@ -61,5 +65,5 @@ class event_dispatcher {
 
 class event_system {
   public:
-     event_dispatcher<std::function<void(void)>> close_dispatcher{};
+     event_dispatcher<std::function<void(void)>> close_dispatcher {};
 };

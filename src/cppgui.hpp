@@ -3,21 +3,13 @@
 #include "core.hpp"
 #include "debug_messenger.hpp"
 #include "device.hpp"
+#include "render_pass.hpp"
 #include "surface.hpp"
 #include "swapchain.hpp"
 #include "win32.hpp"
 
 #include <memory>
 #include <vector>
-
-class render_pass {
-  public:
-     render_pass() {
-     }
-
-  private:
-     VkRenderPass render_pass_;
-};
 
 class window {
   public:
@@ -27,7 +19,8 @@ class window {
         , frame_(platform->create_frame(window_name, &event_system_))
         , surface_(vulkan_core, platform, &frame_)
         , device_(vulkan_core)
-        , swapchain_(&surface_, &device_, vulkan_core) {
+        , swapchain_(swapchain::make(&surface_, &device_, vulkan_core))
+        , render_pass_(&device_, vulkan_core, &swapchain_) {
           close_subscription_ = subscribe_on_close([this] { should_close_ = true; });
      }
 
@@ -46,6 +39,7 @@ class window {
      surface        surface_;
      device         device_;
      swapchain      swapchain_;
+     render_pass    render_pass_;
 
      std::unique_ptr<event_dispatcher<std::function<void()>>::subscription> close_subscription_;
 };
