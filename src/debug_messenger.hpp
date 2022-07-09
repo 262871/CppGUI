@@ -39,9 +39,9 @@ class debug_messenger {
 
 VKAPI_ATTR VkBool32 VKAPI_CALL debug_messenger::callback(VkDebugUtilsMessageSeverityFlagBitsEXT level, VkDebugUtilsMessageTypeFlagsEXT, const VkDebugUtilsMessengerCallbackDataEXT* warn, void*) {
      if (level > VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
-          fmt::print(stderr, fg(fmt::color::turquoise), "{}\n", warn->pMessage);
+          fmt::print(stderr, fg(fmt::color::gold), "{}\n", warn->pMessage);
      else if (level > VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
-          fmt::print(stdout, fmt::emphasis::blink | fg(fmt::color::gold), "{}\n", warn->pMessage);
+          fmt::print(stdout, fg(fmt::color::turquoise), "{}\n", warn->pMessage);
      else if (level != VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
           fmt::print(stdout, fg(fmt::color::light_blue), "{}\n", warn->pMessage);
      else {
