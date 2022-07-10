@@ -1,7 +1,7 @@
-#include "cppgui.hpp"
+#include "GUI.hpp"
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
-     cppgui gui;
+     GUI gui;
      gui.run();
      return 0;
 }

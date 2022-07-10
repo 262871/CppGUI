@@ -1,30 +1,30 @@
 #pragma once
 
-#include "event.hpp"
-
-#include <stdexcept>
+#include "EventSystem.hpp"
 
 #include <windows.h>
 
-class win32 {
+#include <stdexcept>
+
+class Win32 {
   public:
-     win32() { hInstance_ = GetModuleHandleW(0); }
+     Win32() { hInstance_ = GetModuleHandleW(0); }
      HINSTANCE instance() const { return hInstance_; }
 
-     void process_messages();
+     void processMessages();
 
      using frame_handle = HWND;
 
-     frame_handle create_frame(const wchar_t* name, event_system* events);
-     static void  destroy_frame(frame_handle hWnd) { DestroyWindow(hWnd); }
+     frame_handle createFrame(const wchar_t* name, EventSystem* eventSystem);
+     static void  destroyFrame(frame_handle hWnd) { DestroyWindow(hWnd); }
 
   private:
-     static LRESULT CALLBACK message_handler(HWND hWnd, uint32_t uMsg, WPARAM wParam, LPARAM lParam);
+     static LRESULT CALLBACK messageHandler(HWND hWnd, uint32_t uMsg, WPARAM wParam, LPARAM lParam);
 
      HINSTANCE hInstance_;
 };
 
-void win32::process_messages() {
+void Win32::processMessages() {
      MSG message;
      while (PeekMessageW(&message, NULL, 0, 0, PM_REMOVE)) {
           TranslateMessage(&message);
@@ -32,11 +32,11 @@ void win32::process_messages() {
      }
 }
 
-win32::frame_handle win32::create_frame(const wchar_t* name, event_system* events) {
+Win32::frame_handle Win32::createFrame(const wchar_t* name, EventSystem* eventSystem) {
      WNDCLASSEXW wcx {
           .cbSize        = sizeof(WNDCLASSEX),
           .style         = CS_DBLCLKS,
-          .lpfnWndProc   = message_handler,
+          .lpfnWndProc   = messageHandler,
           .cbClsExtra    = 0,
           .cbWndExtra    = 0,
           .hInstance     = hInstance_,
@@ -49,7 +49,7 @@ win32::frame_handle win32::create_frame(const wchar_t* name, event_system* event
      };
      if (!RegisterClassExW(&wcx))
           throw std::runtime_error("call to RegisterClassExW failed");
-     auto lpParam = reinterpret_cast<LPVOID>(events);
+     auto lpParam = reinterpret_cast<LPVOID>(eventSystem);
      auto hWnd    = CreateWindowExW(WS_EX_APPWINDOW, name, name, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, hInstance_, lpParam);
      if (!hWnd)
           throw std::runtime_error("call to CreateWindowExW failed");
@@ -57,21 +57,21 @@ win32::frame_handle win32::create_frame(const wchar_t* name, event_system* event
      return hWnd;
 }
 
-LRESULT CALLBACK win32::message_handler(HWND hWnd, uint32_t uMsg, WPARAM wParam, LPARAM lParam) {
-     event_system* owner { nullptr };
+LRESULT CALLBACK Win32::messageHandler(HWND hWnd, uint32_t uMsg, WPARAM wParam, LPARAM lParam) {
+     EventSystem* eventSystem { nullptr };
      if (uMsg == WM_CREATE) {
           auto pCreate = reinterpret_cast<CREATESTRUCT*>(lParam);
-          owner        = reinterpret_cast<event_system*>(pCreate->lpCreateParams);
+          eventSystem        = reinterpret_cast<EventSystem*>(pCreate->lpCreateParams);
           SetWindowLongPtrW(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(pCreate->lpCreateParams));
      }
      else
-          owner = reinterpret_cast<event_system*>(GetWindowLongPtrW(hWnd, GWLP_USERDATA));
+          eventSystem = reinterpret_cast<EventSystem*>(GetWindowLongPtrW(hWnd, GWLP_USERDATA));
 
      switch (uMsg) {
           case WM_ERASEBKGND:
                return 1;
           case WM_CLOSE:
-               owner->close_dispatcher.signal();
+               eventSystem->closeDispatcher.signal();
                return 0;
           case WM_DESTROY:
                PostQuitMessage(0);

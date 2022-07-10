@@ -1,46 +1,44 @@
 #pragma once
 
-#include "core.hpp"
-#include "device.hpp"
+#include "Core.hpp"
+#include "Device.hpp"
 
-#include <volk.h>
-
-class image_resource2D {
+class ImageResource2D {
   public:
-     struct image_conf {
+     struct ImageConf {
           VkFormat              format;
           VkExtent2D            extent;
-          uint32_t              mip_levels { 1 };
+          uint32_t              mipLevels { 1 };
           VkSampleCountFlagBits msaa { VK_SAMPLE_COUNT_1_BIT };
           VkImageTiling         tiling { VK_IMAGE_TILING_OPTIMAL };
           VkImageUsageFlags     usage;
-          VkMemoryPropertyFlags memory_properties;
+          VkMemoryPropertyFlags memoryProperties;
      };
-     struct view_conf {
+     struct ViewConf {
           VkImageAspectFlags aspect;
      };
-     image_resource2D(device* gpu, core* vulkan_core, const image_conf& iconf, const view_conf& vconf)
-        : device_(gpu)
-        , vulkan_core_(vulkan_core)
-        , extent_(iconf.extent)
-        , format_(iconf.format) {
-          create_image(iconf);
-          create_memory(iconf.memory_properties);
-          create_image_view(vconf.aspect);
+     ImageResource2D(Device* device, Core* core, const ImageConf& iConf, const ViewConf& vConf)
+        : device_(device)
+        , core_(core)
+        , extent_(iConf.extent)
+        , format_(iConf.format) {
+          createImage(iConf);
+          createMemory(iConf.memoryProperties);
+          createImageView(vConf.aspect);
      }
 
-     ~image_resource2D() {
+     ~ImageResource2D() {
           if (device_ != nullptr) {
-               vkDestroyImageView(device_->logical(), image_view_, vulkan_core_->allocator());
-               vkDestroyImage(device_->logical(), image_, vulkan_core_->allocator());
-               vkFreeMemory(device_->logical(), memory_, vulkan_core_->allocator());
+               vkDestroyImageView(device_->logical(), imageView_, core_->allocator());
+               vkDestroyImage(device_->logical(), image_, core_->allocator());
+               vkFreeMemory(device_->logical(), memory_, core_->allocator());
           }
      }
-     
+
      auto format() { return format_; }
 
   private:
-     void create_image(image_conf iconf) {
+     void createImage(ImageConf iConf) {
           VkImageCreateInfo image_create_info {
                .sType     = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
                .pNext     = nullptr,
@@ -51,21 +49,21 @@ class image_resource2D {
                      .width  = extent_.width,
                      .height = extent_.height,
                      .depth  = 1 },
-               .mipLevels             = iconf.mip_levels,
+               .mipLevels             = iConf.mipLevels,
                .arrayLayers           = 1,
-               .samples               = iconf.msaa,
-               .tiling                = iconf.tiling,
-               .usage                 = iconf.usage,
+               .samples               = iConf.msaa,
+               .tiling                = iConf.tiling,
+               .usage                 = iConf.usage,
                .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
                .queueFamilyIndexCount = 0,
                .pQueueFamilyIndices   = nullptr,
                .initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED
           };
-          if (vkCreateImage(device_->logical(), &image_create_info, vulkan_core_->allocator(), &image_) != VK_SUCCESS)
+          if (vkCreateImage(device_->logical(), &image_create_info, core_->allocator(), &image_) != VK_SUCCESS)
                throw std::runtime_error("call to vkCreateImage failed");
      }
 
-     uint32_t find_memory_index(uint32_t type_bits, VkMemoryPropertyFlags memory_property_flags) {
+     uint32_t findMemoryIndex(uint32_t type_bits, VkMemoryPropertyFlags memory_property_flags) {
           VkPhysicalDeviceMemoryProperties physical_mem_props {};
           vkGetPhysicalDeviceMemoryProperties(device_->physical(), &physical_mem_props);
 
@@ -75,7 +73,7 @@ class image_resource2D {
 
           throw std::runtime_error("call to findMemory type failed to find memory");
      }
-     void create_memory(VkMemoryPropertyFlags memory_properties) {
+     void createMemory(VkMemoryPropertyFlags memoryProperties) {
           VkMemoryRequirements memory_requirements;
           vkGetImageMemoryRequirements(device_->logical(), image_, &memory_requirements);
 
@@ -83,20 +81,20 @@ class image_resource2D {
                .sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
                .pNext           = nullptr,
                .allocationSize  = memory_requirements.size,
-               .memoryTypeIndex = find_memory_index(memory_requirements.memoryTypeBits, memory_properties)
+               .memoryTypeIndex = findMemoryIndex(memory_requirements.memoryTypeBits, memoryProperties)
           };
 
-          if (vkAllocateMemory(device_->logical(), &memory_allocate_info, vulkan_core_->allocator(), &memory_) != VK_SUCCESS)
+          if (vkAllocateMemory(device_->logical(), &memory_allocate_info, core_->allocator(), &memory_) != VK_SUCCESS)
                throw std::runtime_error("call to vkAllocateMemory failed");
 
           if (vkBindImageMemory(device_->logical(), image_, memory_, 0) != VK_SUCCESS)
                throw std::runtime_error("call to vkBindImageMemory failed");
      }
-     void create_image_view(VkImageAspectFlags aspect_flags, uint32_t mip_levels = 1) {
+     void createImageView(VkImageAspectFlags aspect_flags, uint32_t mipLevels = 1) {
           VkImageSubresourceRange subresource {
                .aspectMask     = aspect_flags,
                .baseMipLevel   = 0,
-               .levelCount     = mip_levels,
+               .levelCount     = mipLevels,
                .baseArrayLayer = 0,
                .layerCount     = 1
           };
@@ -110,17 +108,15 @@ class image_resource2D {
                .components       = {},
                .subresourceRange = subresource
           };
-          if (vkCreateImageView(device_->logical(), &image_view_create_info, vulkan_core_->allocator(), &image_view_) != VK_SUCCESS)
+          if (vkCreateImageView(device_->logical(), &image_view_create_info, core_->allocator(), &imageView_) != VK_SUCCESS)
                throw std::runtime_error("call to vkCreateImageView failed");
      }
 
-     device*        device_ { nullptr };
-     core*          vulkan_core_ { nullptr };
+     Device*        device_ { nullptr };
+     Core*          core_ { nullptr };
      VkExtent2D     extent_ { 0, 0 };
      VkFormat       format_ {};
      VkImage        image_ { nullptr };
      VkDeviceMemory memory_ { nullptr };
-     VkImageView    image_view_ { nullptr };
+     VkImageView    imageView_ { nullptr };
 };
-
-

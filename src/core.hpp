@@ -1,17 +1,18 @@
 #pragma once
 
+#define VK_USE_PLATFORM_WIN32_KHR
+#include <volk.h>
+#include <vulkan/vulkan_win32.h>
+
 #include <windows.h>
 
-#include <volk.h>
-
-#include <vector>
 #include <stdexcept>
+#include <vector>
 
-
-class core {
+class Core {
   public:
-     core();
-     ~core();
+     Core();
+     ~Core();
      VkAllocationCallbacks* allocator() { return allocator_; }
      VkInstance             instance() { return instance_; }
 
@@ -22,7 +23,7 @@ class core {
      std::vector<const char*> layers_ { "VK_LAYER_KHRONOS_validation" };
 };
 
-core::core() {
+Core::Core() {
      if (volkInitialize() != VK_SUCCESS)
           throw std::runtime_error("call to volkInitialize failed");
 
@@ -55,7 +56,6 @@ core::core() {
      volkLoadInstance(instance_);
 }
 
-core::~core() {
+Core::~Core() {
      vkDestroyInstance(instance_, nullptr);
 }
-

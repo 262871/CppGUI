@@ -1,8 +1,6 @@
 #pragma once
 
-#include "core.hpp"
-
-#include <volk.h>
+#include "Core.hpp"
 
 #define FMT_HEADER_ONLY
 #include <fmt/color.h>
@@ -11,10 +9,10 @@
 #include <cstring>
 #include <stdexcept>
 
-class debug_messenger {
+class DebugMessenger {
   public:
-     debug_messenger(core* vulkan_core)
-        : vulkan_core_(vulkan_core) {
+     DebugMessenger(Core* core)
+        : core_(core) {
           VkDebugUtilsMessengerCreateInfoEXT debug_messenger_info {
                .sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
                .pNext           = nullptr,
@@ -25,19 +23,19 @@ class debug_messenger {
                .pUserData       = nullptr
           };
 
-          if (vkCreateDebugUtilsMessengerEXT(vulkan_core_->instance(), &debug_messenger_info, vulkan_core_->allocator(), &debug_messenger_) != VK_SUCCESS)
+          if (vkCreateDebugUtilsMessengerEXT(core_->instance(), &debug_messenger_info, core_->allocator(), &debugMessenger_) != VK_SUCCESS)
                throw std::runtime_error("call to vkCreateDebugUtilsMessengerEXT failed");
      }
-     ~debug_messenger() { vkDestroyDebugUtilsMessengerEXT(vulkan_core_->instance(), debug_messenger_, vulkan_core_->allocator()); }
+     ~DebugMessenger() { vkDestroyDebugUtilsMessengerEXT(core_->instance(), debugMessenger_, core_->allocator()); }
 
   private:
      static VKAPI_ATTR VkBool32 VKAPI_CALL callback(VkDebugUtilsMessageSeverityFlagBitsEXT level, VkDebugUtilsMessageTypeFlagsEXT, const VkDebugUtilsMessengerCallbackDataEXT* warn, void*);
 
-     core*                    vulkan_core_;
-     VkDebugUtilsMessengerEXT debug_messenger_;
+     Core*                    core_;
+     VkDebugUtilsMessengerEXT debugMessenger_;
 };
 
-VKAPI_ATTR VkBool32 VKAPI_CALL debug_messenger::callback(VkDebugUtilsMessageSeverityFlagBitsEXT level, VkDebugUtilsMessageTypeFlagsEXT, const VkDebugUtilsMessengerCallbackDataEXT* warn, void*) {
+VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessenger::callback(VkDebugUtilsMessageSeverityFlagBitsEXT level, VkDebugUtilsMessageTypeFlagsEXT, const VkDebugUtilsMessengerCallbackDataEXT* warn, void*) {
      if (level > VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
           fmt::print(stderr, fg(fmt::color::gold), "{}\n", warn->pMessage);
      else if (level > VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)

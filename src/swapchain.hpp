@@ -1,43 +1,43 @@
 #pragma once
 
-#include "core.hpp"
-#include "device.hpp"
-#include "image_resource2D.hpp"
-#include "surface.hpp"
+#include "Core.hpp"
+#include "Device.hpp"
+#include "ImageResource2D.hpp"
+#include "Surface.hpp"
 
 #include <optional>
 #include <vector>
 
-class swapchain {
+class Swapchain {
   public:
-     static swapchain make(surface* window, device* gpu, core* vulkan_core) {
+     static Swapchain make(Surface* surface, Device* device, Core* core) {
           VkSurfaceCapabilitiesKHR capabilities;
-          if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(gpu->physical(), window->surfaceKHR(), &capabilities) != VK_SUCCESS)
+          if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device->physical(), surface->surfaceKHR(), &capabilities) != VK_SUCCESS)
                throw std::runtime_error("call to vkGetPhysicalDeviceSurfaceCapabilitiesKHR failed");
 
           fmt::print("capabilities.currentExtent: {}, {}\n", capabilities.currentExtent.width, capabilities.currentExtent.height);
-          image_resource2D::image_conf iconf {
+          ImageResource2D::ImageConf iConf {
                .format            = VK_FORMAT_D32_SFLOAT,
                .extent            = capabilities.currentExtent,
-               .mip_levels        = 1,
+               .mipLevels        = 1,
                .msaa              = VK_SAMPLE_COUNT_1_BIT,
                .tiling            = VK_IMAGE_TILING_OPTIMAL,
                .usage             = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-               .memory_properties = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT
+               .memoryProperties = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT
           };
-          image_resource2D::view_conf vconf { .aspect = VK_IMAGE_ASPECT_DEPTH_BIT };
-          return swapchain(window, gpu, vulkan_core, capabilities, iconf, vconf);
+          ImageResource2D::ViewConf vConf { .aspect = VK_IMAGE_ASPECT_DEPTH_BIT };
+          return Swapchain(surface, device, core, capabilities, iConf, vConf);
      }
 
-     ~swapchain() {
-          for (auto& image_view : swapchain_image_views_)
-               vkDestroyImageView(device_->logical(), image_view, vulkan_core_->allocator());
-          swapchain_image_views_.clear();
+     ~Swapchain() {
+          for (auto& image_view : swapchainImageViews_)
+               vkDestroyImageView(device_->logical(), image_view, core_->allocator());
+          swapchainImageViews_.clear();
 
-          vkDestroySwapchainKHR(device_->logical(), swapchain_, vulkan_core_->allocator());
+          vkDestroySwapchainKHR(device_->logical(), swapchain_, core_->allocator());
      }
 
-     std::optional<uint32_t> try_next_image_index(VkSemaphore semaphore, VkFence fence) {
+     std::optional<uint32_t> tryNextImageIndex(VkSemaphore semaphore, VkFence fence) {
           uint32_t index {};
           if (vkAcquireNextImageKHR(device_->logical(), swapchain_, 4000000000, semaphore, fence, &index) == VK_SUCCESS)
                return index;
@@ -58,33 +58,34 @@ class swapchain {
           if (vkQueuePresentKHR(device_->present(), &present_info) == VK_SUCCESS)
                return;
      }
-     
-     auto format() { return swapchain_format_; }
-     auto depth_format() { return depth_resource_.format(); }
+     auto extent() { return swapchainExtent_; }
+     auto format() { return swapchainFormat_; }
+     auto depthFormat() { return depthResource_.format(); }
+     auto imageCount() { return swapchainImages_.size(); }
 
   private:
-     swapchain(surface* window, device* gpu, core* vulkan_core, const VkSurfaceCapabilitiesKHR& capabilities, image_resource2D::image_conf iconf, image_resource2D::view_conf vconf)
-        : device_(gpu)
-        , vulkan_core_(vulkan_core)
-        , swapchain_extent_(capabilities.currentExtent)
-        , swapchain_format_(VK_FORMAT_B8G8R8A8_SRGB)
-        , depth_resource_(device_, vulkan_core_, iconf, vconf) {
-          create_swapchain(window, capabilities);
+     Swapchain(Surface* surface, Device* device, Core* core, const VkSurfaceCapabilitiesKHR& capabilities, ImageResource2D::ImageConf iConf, ImageResource2D::ViewConf vConf)
+        : device_(device)
+        , core_(core)
+        , swapchainExtent_(capabilities.currentExtent)
+        , swapchainFormat_(VK_FORMAT_B8G8R8A8_SRGB)
+        , depthResource_(device_, core_, iConf, vConf) {
+          create_swapchain(surface, capabilities);
           initialize_swapchain_images();
           create_image_views();
      }
 
-     void create_swapchain(surface* window, const VkSurfaceCapabilitiesKHR& capabilities) {
+     void create_swapchain(Surface* surface, const VkSurfaceCapabilitiesKHR& capabilities) {
           uint32_t                 combo_queue_index { 0 };
           VkSwapchainCreateInfoKHR swapchain_create_info {
                .sType                 = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
                .pNext                 = nullptr,
                .flags                 = {},
-               .surface               = window->surfaceKHR(),
-               .minImageCount         = 2,
-               .imageFormat           = swapchain_format_,
+               .surface               = surface->surfaceKHR(),
+               .minImageCount         = capabilities.minImageCount > 3 ? capabilities.minImageCount : capabilities.maxImageCount > 3 ? 3 : capabilities.maxImageCount,
+               .imageFormat           = swapchainFormat_,
                .imageColorSpace       = VK_COLORSPACE_SRGB_NONLINEAR_KHR,
-               .imageExtent           = swapchain_extent_,
+               .imageExtent           = swapchainExtent_,
                .imageArrayLayers      = 1,
                .imageUsage            = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
                .imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE,
@@ -92,12 +93,12 @@ class swapchain {
                .pQueueFamilyIndices   = &combo_queue_index,
                .preTransform          = capabilities.currentTransform,
                .compositeAlpha        = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-               .presentMode           = VK_PRESENT_MODE_MAILBOX_KHR,
+               .presentMode           = VK_PRESENT_MODE_FIFO_KHR,
                .clipped               = VK_TRUE,
                .oldSwapchain          = nullptr
           };
 
-          if (vkCreateSwapchainKHR(device_->logical(), &swapchain_create_info, vulkan_core_->allocator(), &swapchain_) != VK_SUCCESS)
+          if (vkCreateSwapchainKHR(device_->logical(), &swapchain_create_info, core_->allocator(), &swapchain_) != VK_SUCCESS)
                throw std::runtime_error("call to vkCreateSwapchainKHR failed");
      }
 
@@ -106,8 +107,8 @@ class swapchain {
           if (vkGetSwapchainImagesKHR(device_->logical(), swapchain_, &count, nullptr) != VK_SUCCESS)
                throw std::runtime_error("call to vkGetSwapchainImagesKHR failed");
 
-          swapchain_images_.resize(count);
-          if (vkGetSwapchainImagesKHR(device_->logical(), swapchain_, &count, swapchain_images_.data()) != VK_SUCCESS)
+          swapchainImages_.resize(count);
+          if (vkGetSwapchainImagesKHR(device_->logical(), swapchain_, &count, swapchainImages_.data()) != VK_SUCCESS)
                throw std::runtime_error("call to vkGetSwapchainImagesKHR failed");
      }
 
@@ -130,23 +131,23 @@ class swapchain {
                .subresourceRange = subresource
           };
           VkImageView image_view {};
-          if (vkCreateImageView(device_->logical(), &image_view_create_info, vulkan_core_->allocator(), &image_view) != VK_SUCCESS)
+          if (vkCreateImageView(device_->logical(), &image_view_create_info, core_->allocator(), &image_view) != VK_SUCCESS)
                throw std::runtime_error("call to vkCreateImageView failed");
           return image_view;
      }
 
      void create_image_views() {
-          swapchain_image_views_.reserve(swapchain_images_.size());
-          for (size_t i = 0; i != swapchain_images_.size(); ++i)
-               swapchain_image_views_.push_back(create_image_view(swapchain_images_[i], swapchain_format_, VK_IMAGE_ASPECT_COLOR_BIT));
+          swapchainImageViews_.reserve(swapchainImages_.size());
+          for (size_t i = 0; i != swapchainImages_.size(); ++i)
+               swapchainImageViews_.push_back(create_image_view(swapchainImages_[i], swapchainFormat_, VK_IMAGE_ASPECT_COLOR_BIT));
      }
 
-     device*                  device_;
-     core*                    vulkan_core_;
+     Device*                  device_;
+     Core*                    core_;
      VkSwapchainKHR           swapchain_;
-     VkExtent2D               swapchain_extent_;
-     std::vector<VkImage>     swapchain_images_;
-     VkFormat                 swapchain_format_;
-     std::vector<VkImageView> swapchain_image_views_;
-     image_resource2D         depth_resource_;
+     VkExtent2D               swapchainExtent_;
+     std::vector<VkImage>     swapchainImages_;
+     VkFormat                 swapchainFormat_;
+     std::vector<VkImageView> swapchainImageViews_;
+     ImageResource2D          depthResource_;
 };

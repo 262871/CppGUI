@@ -1,15 +1,13 @@
 #pragma once
 
-#include "core.hpp"
-#include "win32.hpp"
-
-#include <vulkan/vulkan_win32.h>
+#include "Core.hpp"
+#include "Win32.hpp"
 
 template <typename T>
-class frame {
+class Frame {
   public:
-     frame(T::frame_handle handle) { handle_ = handle; }
-     ~frame() { T::destroy_frame(handle_); }
+     Frame(T::frame_handle handle) { handle_ = handle; }
+     ~Frame() { T::destroyFrame(handle_); }
 
      T::frame_handle handle() { return handle_; }
 
@@ -17,27 +15,27 @@ class frame {
      T::frame_handle handle_;
 };
 
-class surface {
+class Surface {
   public:
-     surface(core* vulkan_core, win32* platform, frame<win32>* frame)
-        : vulkan_core_(vulkan_core) {
+     Surface(Core* core, Win32* win32, Frame<Win32>* frame)
+        : core_(core) {
           VkWin32SurfaceCreateInfoKHR create_info {
                .sType     = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
                .pNext     = nullptr,
                .flags     = {},
-               .hinstance = platform->instance(),
+               .hinstance = win32->instance(),
                .hwnd      = frame->handle(),
           };
-          if (auto function = reinterpret_cast<PFN_vkCreateWin32SurfaceKHR>(vkGetInstanceProcAddr(vulkan_core_->instance(), "vkCreateWin32SurfaceKHR")); function != nullptr)
-               function(vulkan_core_->instance(), &create_info, vulkan_core_->allocator(), &surface_);
+          if (auto function = reinterpret_cast<PFN_vkCreateWin32SurfaceKHR>(vkGetInstanceProcAddr(core_->instance(), "vkCreateWin32SurfaceKHR")); function != nullptr)
+               function(core_->instance(), &create_info, core_->allocator(), &surface_);
      }
-     ~surface() {
-          vkDestroySurfaceKHR(vulkan_core_->instance(), surface_, vulkan_core_->allocator());
+     ~Surface() {
+          vkDestroySurfaceKHR(core_->instance(), surface_, core_->allocator());
      }
 
      VkSurfaceKHR surfaceKHR() { return surface_; }
 
   private:
-     core*        vulkan_core_;
+     Core*        core_;
      VkSurfaceKHR surface_;
 };

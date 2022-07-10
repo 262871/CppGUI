@@ -1,8 +1,6 @@
 #pragma once
 
-#include "core.hpp"
-
-#include <volk.h>
+#include "Core.hpp"
 
 #define FMT_HEADER_ONLY
 #include <fmt/format.h>
@@ -10,44 +8,44 @@
 #include <stdexcept>
 #include <vector>
 
-class device {
+class Device {
   public:
-     device(core* engine_core);
-     ~device();
+     Device(Core* core);
+     ~Device();
 
-     auto physical() { return physical_device_; }
+     auto physical() { return physicalDevice_; }
      auto logical() { return device_; }
 
-     auto present() { return present_queue_; }
-     auto graphics() { return graphics_queue_; }
-     auto transfer() { return transfer_queue_; }
+     auto present() { return presentQueue_; }
+     auto graphics() { return graphicsQueue_; }
+     auto transfer() { return transferQueue_; }
 
   private:
-     void queue_setup() {
-          vkGetDeviceQueue(device_, 0, 0, &present_queue_);
-          vkGetDeviceQueue(device_, 0, 1, &graphics_queue_);
-          vkGetDeviceQueue(device_, 1, 0, &transfer_queue_);
+     void queueSetup() {
+          vkGetDeviceQueue(device_, 0, 0, &presentQueue_);
+          vkGetDeviceQueue(device_, 0, 1, &graphicsQueue_);
+          vkGetDeviceQueue(device_, 1, 0, &transferQueue_);
      }
 
-     core*            engine_core_;
-     VkPhysicalDevice physical_device_;
+     Core*            core_;
+     VkPhysicalDevice physicalDevice_;
      VkDevice         device_;
 
-     VkQueue present_queue_;
-     VkQueue graphics_queue_;
-     VkQueue transfer_queue_;
+     VkQueue presentQueue_;
+     VkQueue graphicsQueue_;
+     VkQueue transferQueue_;
 
      std::vector<const char*> extensions_ { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 };
 
-device::device(core* engine_core)
-   : engine_core_(engine_core) {
+Device::Device(Core* core)
+   : core_(core) {
      uint32_t count = 1;
-     vkEnumeratePhysicalDevices(engine_core_->instance(), &count, &physical_device_);
+     vkEnumeratePhysicalDevices(core_->instance(), &count, &physicalDevice_);
 
      count    = 2;
      auto qfp = new VkQueueFamilyProperties[2];
-     vkGetPhysicalDeviceQueueFamilyProperties(physical_device_, &count, qfp);
+     vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice_, &count, qfp);
 
      fmt::print("vkGetPhysicalDeviceQueueFamilyProperties count: {}\n", count);
      fmt::print("QueueFamilyProperties[0].queueCount: {}\n", qfp[0].queueCount);
@@ -88,12 +86,12 @@ device::device(core* engine_core)
           .ppEnabledExtensionNames = extensions_.data(),
           .pEnabledFeatures        = &device_features
      };
-     if (vkCreateDevice(physical_device_, &device_create_info, engine_core_->allocator(), &device_) != VK_SUCCESS)
+     if (vkCreateDevice(physicalDevice_, &device_create_info, core_->allocator(), &device_) != VK_SUCCESS)
           throw std::runtime_error("call to vkCreateDevice failed");
 
-     queue_setup();
+     queueSetup();
 }
 
-device::~device() {
-     vkDestroyDevice(device_, engine_core_->allocator());
+Device::~Device() {
+     vkDestroyDevice(device_, core_->allocator());
 }
