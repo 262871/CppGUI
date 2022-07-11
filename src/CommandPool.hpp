@@ -7,7 +7,7 @@
 
 class CommandBuffer {
   public:
-     auto get() { return commandBuffer_; }
+     auto& get() { return commandBuffer_; }
      void begin() {
           VkCommandBufferBeginInfo vkCommandBufferBeginInfo {
                .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,

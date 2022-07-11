@@ -82,6 +82,8 @@ class Swapchain {
      auto colorView() { return colorResource_.view(); }
      auto depthView() { return depthResource_.view(); }
      auto imageViews() { return swapchainImageViews_; }
+     
+     auto& get() { return swapchain_; }
 
   private:
      Swapchain(Surface* surface, Device* device, Core* core, const VkSurfaceCapabilitiesKHR& caps, ImageResource2D::ImageConf iColorConf, ImageResource2D::ViewConf vColorConf, ImageResource2D::ImageConf iDepthConf, ImageResource2D::ViewConf vDepthConf)
