@@ -11,13 +11,13 @@ class Renderer {
         : surface_(core, win32, frame)
         , device_(core)
         , swapchain_(Swapchain::make(&surface_, &device_, core))
-        , renderPass_(&device_, core, &swapchain_){
-            
-        }
+        , renderPass_(&device_, core, &swapchain_)
+        , graphicsCommandPool_(&device_, core, 0) {}
 
   private:
-     Surface        surface_;
-     Device         device_;
-     Swapchain      swapchain_;
-     RenderPass     renderPass_;
+     Surface     surface_;
+     Device      device_;
+     Swapchain   swapchain_;
+     RenderPass  renderPass_;
+     CommandPool graphicsCommandPool_;
 };

@@ -26,8 +26,12 @@ class Surface {
                .hinstance = win32->instance(),
                .hwnd      = frame->handle(),
           };
-          if (auto function = reinterpret_cast<PFN_vkCreateWin32SurfaceKHR>(vkGetInstanceProcAddr(core_->instance(), "vkCreateWin32SurfaceKHR")); function != nullptr)
-               function(core_->instance(), &create_info, core_->allocator(), &surface_);
+          if (auto function = reinterpret_cast<PFN_vkCreateWin32SurfaceKHR>(vkGetInstanceProcAddr(core_->instance(), "vkCreateWin32SurfaceKHR")); function != nullptr) {
+               if (function(core_->instance(), &create_info, core_->allocator(), &surface_) != VK_SUCCESS)
+                    throw std::runtime_error("call to vkCreateWin32SurfaceKHR failed");
+          }
+          else
+               throw std::runtime_error("call to vkGetInstanceProcAddr failed");
      }
      ~Surface() {
           vkDestroySurfaceKHR(core_->instance(), surface_, core_->allocator());

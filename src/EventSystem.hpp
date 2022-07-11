@@ -64,5 +64,6 @@ class EventDispatcher {
 
 class EventSystem {
   public:
-     EventDispatcher<std::function<void(void)>> closeDispatcher {};
+     EventDispatcher<std::function<void(void)>> closeDispatcher;
+     EventDispatcher<std::function<void(int, int)>, int, int> mouseMoveDispatcher;
 };

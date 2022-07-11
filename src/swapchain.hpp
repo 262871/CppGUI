@@ -16,17 +16,33 @@ class Swapchain {
                throw std::runtime_error("call to vkGetPhysicalDeviceSurfaceCapabilitiesKHR failed");
 
           fmt::print("capabilities.currentExtent: {}, {}\n", capabilities.currentExtent.width, capabilities.currentExtent.height);
-          ImageResource2D::ImageConf iConf {
-               .format            = VK_FORMAT_D32_SFLOAT,
-               .extent            = capabilities.currentExtent,
+          // -------------------------------------------------------------------------------------------------------------------//
+          ImageResource2D::ImageConf iColorConf {
+               .format           = VK_FORMAT_B8G8R8A8_SRGB,
+               .extent           = capabilities.currentExtent,
                .mipLevels        = 1,
-               .msaa              = VK_SAMPLE_COUNT_1_BIT,
-               .tiling            = VK_IMAGE_TILING_OPTIMAL,
-               .usage             = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-               .memoryProperties = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT
+               .msaa             = VK_SAMPLE_COUNT_4_BIT,
+               .tiling           = VK_IMAGE_TILING_OPTIMAL,
+               .usage            = VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+               .memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
           };
-          ImageResource2D::ViewConf vConf { .aspect = VK_IMAGE_ASPECT_DEPTH_BIT };
-          return Swapchain(surface, device, core, capabilities, iConf, vConf);
+          ImageResource2D::ViewConf vColorConf { .aspect = VK_IMAGE_ASPECT_COLOR_BIT };
+          // -------------------------------------------------------------------------------------------------------------------//
+
+          // -------------------------------------------------------------------------------------------------------------------//
+          ImageResource2D::ImageConf iDepthConf {
+               .format           = VK_FORMAT_D32_SFLOAT,
+               .extent           = capabilities.currentExtent,
+               .mipLevels        = 1,
+               .msaa             = VK_SAMPLE_COUNT_4_BIT,
+               .tiling           = VK_IMAGE_TILING_OPTIMAL,
+               .usage            = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+               .memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+          };
+          ImageResource2D::ViewConf vDepthConf { .aspect = VK_IMAGE_ASPECT_DEPTH_BIT };
+          // -------------------------------------------------------------------------------------------------------------------//
+
+          return Swapchain(surface, device, core, capabilities, iColorConf, vColorConf, iDepthConf, vDepthConf);
      }
 
      ~Swapchain() {
@@ -61,28 +77,42 @@ class Swapchain {
      auto extent() { return swapchainExtent_; }
      auto format() { return swapchainFormat_; }
      auto depthFormat() { return depthResource_.format(); }
-     auto imageCount() { return swapchainImages_.size(); }
+     auto imageCount() { return imageCount_; }
+
+     auto colorView() { return colorResource_.view(); }
+     auto depthView() { return depthResource_.view(); }
+     auto imageViews() { return swapchainImageViews_; }
 
   private:
-     Swapchain(Surface* surface, Device* device, Core* core, const VkSurfaceCapabilitiesKHR& capabilities, ImageResource2D::ImageConf iConf, ImageResource2D::ViewConf vConf)
+     Swapchain(Surface* surface, Device* device, Core* core, const VkSurfaceCapabilitiesKHR& caps, ImageResource2D::ImageConf iColorConf, ImageResource2D::ViewConf vColorConf, ImageResource2D::ImageConf iDepthConf, ImageResource2D::ViewConf vDepthConf)
         : device_(device)
         , core_(core)
-        , swapchainExtent_(capabilities.currentExtent)
-        , swapchainFormat_(VK_FORMAT_B8G8R8A8_SRGB)
-        , depthResource_(device_, core_, iConf, vConf) {
-          create_swapchain(surface, capabilities);
-          initialize_swapchain_images();
-          create_image_views();
+        , swapchainExtent_(iColorConf.extent)
+        , swapchainFormat_(iColorConf.format)
+        , colorResource_(device_, core_, iColorConf, vColorConf)
+        , depthResource_(device_, core_, iDepthConf, vDepthConf) {
+          createSwapchain(surface, caps);
+          initializeSwapchainImages();
+          createImageViews();
+          fmt::print("Swapchain image count: {}\n", imageCount_);
      }
 
-     void create_swapchain(Surface* surface, const VkSurfaceCapabilitiesKHR& capabilities) {
-          uint32_t                 combo_queue_index { 0 };
+     void createSwapchain(Surface* surface, const VkSurfaceCapabilitiesKHR& caps) {
+          uint32_t combo_queue_index { 0 };
+          uint32_t imageCount = 0;
+          if (caps.minImageCount > 2)
+               imageCount = caps.minImageCount;
+          else if (caps.maxImageCount > 3)
+               imageCount = 3;
+          else
+               imageCount = caps.maxImageCount;
+
           VkSwapchainCreateInfoKHR swapchain_create_info {
                .sType                 = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
                .pNext                 = nullptr,
                .flags                 = {},
                .surface               = surface->surfaceKHR(),
-               .minImageCount         = capabilities.minImageCount > 3 ? capabilities.minImageCount : capabilities.maxImageCount > 3 ? 3 : capabilities.maxImageCount,
+               .minImageCount         = imageCount,
                .imageFormat           = swapchainFormat_,
                .imageColorSpace       = VK_COLORSPACE_SRGB_NONLINEAR_KHR,
                .imageExtent           = swapchainExtent_,
@@ -91,7 +121,7 @@ class Swapchain {
                .imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE,
                .queueFamilyIndexCount = 1,
                .pQueueFamilyIndices   = &combo_queue_index,
-               .preTransform          = capabilities.currentTransform,
+               .preTransform          = caps.currentTransform,
                .compositeAlpha        = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
                .presentMode           = VK_PRESENT_MODE_FIFO_KHR,
                .clipped               = VK_TRUE,
@@ -102,17 +132,16 @@ class Swapchain {
                throw std::runtime_error("call to vkCreateSwapchainKHR failed");
      }
 
-     void initialize_swapchain_images() {
-          uint32_t count {};
-          if (vkGetSwapchainImagesKHR(device_->logical(), swapchain_, &count, nullptr) != VK_SUCCESS)
+     void initializeSwapchainImages() {
+          if (vkGetSwapchainImagesKHR(device_->logical(), swapchain_, &imageCount_, nullptr) != VK_SUCCESS)
                throw std::runtime_error("call to vkGetSwapchainImagesKHR failed");
 
-          swapchainImages_.resize(count);
-          if (vkGetSwapchainImagesKHR(device_->logical(), swapchain_, &count, swapchainImages_.data()) != VK_SUCCESS)
+          swapchainImages_.resize(imageCount_);
+          if (vkGetSwapchainImagesKHR(device_->logical(), swapchain_, &imageCount_, swapchainImages_.data()) != VK_SUCCESS)
                throw std::runtime_error("call to vkGetSwapchainImagesKHR failed");
      }
 
-     VkImageView create_image_view(VkImage image, VkFormat format, VkImageAspectFlags aspect_flags, uint32_t mip_levels = 1) {
+     VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspect_flags, uint32_t mip_levels = 1) {
           VkImageSubresourceRange subresource {
                .aspectMask     = aspect_flags,
                .baseMipLevel   = 0,
@@ -136,18 +165,20 @@ class Swapchain {
           return image_view;
      }
 
-     void create_image_views() {
-          swapchainImageViews_.reserve(swapchainImages_.size());
-          for (size_t i = 0; i != swapchainImages_.size(); ++i)
-               swapchainImageViews_.push_back(create_image_view(swapchainImages_[i], swapchainFormat_, VK_IMAGE_ASPECT_COLOR_BIT));
+     void createImageViews() {
+          swapchainImageViews_.reserve(imageCount_);
+          for (size_t i = 0; i != imageCount_; ++i)
+               swapchainImageViews_.push_back(createImageView(swapchainImages_[i], swapchainFormat_, VK_IMAGE_ASPECT_COLOR_BIT));
      }
 
      Device*                  device_;
      Core*                    core_;
-     VkSwapchainKHR           swapchain_;
      VkExtent2D               swapchainExtent_;
-     std::vector<VkImage>     swapchainImages_;
      VkFormat                 swapchainFormat_;
-     std::vector<VkImageView> swapchainImageViews_;
+     ImageResource2D          colorResource_;
      ImageResource2D          depthResource_;
+     VkSwapchainKHR           swapchain_;
+     uint32_t                 imageCount_;
+     std::vector<VkImage>     swapchainImages_;
+     std::vector<VkImageView> swapchainImageViews_;
 };

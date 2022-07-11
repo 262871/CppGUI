@@ -1,10 +1,6 @@
 #pragma once
 
-#define VK_USE_PLATFORM_WIN32_KHR
-#include <volk.h>
-#include <vulkan/vulkan_win32.h>
-
-#include <windows.h>
+#include "volk.hpp"
 
 #include <stdexcept>
 #include <vector>
@@ -19,7 +15,7 @@ class Core {
   private:
      VkAllocationCallbacks*   allocator_ { nullptr };
      VkInstance               instance_;
-     std::vector<const char*> extensions_ { "VK_EXT_debug_utils", "VK_KHR_surface", "VK_KHR_win32_surface" };
+     std::vector<const char*> extensions_ { VK_EXT_DEBUG_UTILS_EXTENSION_NAME, VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME };
      std::vector<const char*> layers_ { "VK_LAYER_KHRONOS_validation" };
 };
 

@@ -35,6 +35,7 @@ class ImageResource2D {
           }
      }
 
+     auto view() { return imageView_; }
      auto format() { return format_; }
 
   private:
@@ -112,11 +113,11 @@ class ImageResource2D {
                throw std::runtime_error("call to vkCreateImageView failed");
      }
 
-     Device*        device_ { nullptr };
-     Core*          core_ { nullptr };
-     VkExtent2D     extent_ { 0, 0 };
-     VkFormat       format_ {};
-     VkImage        image_ { nullptr };
-     VkDeviceMemory memory_ { nullptr };
-     VkImageView    imageView_ { nullptr };
+     Device*        device_;
+     Core*          core_;
+     VkExtent2D     extent_;
+     VkFormat       format_;
+     VkImage        image_;
+     VkDeviceMemory memory_;
+     VkImageView    imageView_;
 };

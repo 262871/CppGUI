@@ -3,6 +3,7 @@
 #include "EventSystem.hpp"
 
 #include <windows.h>
+#include <windowsx.h>
 
 #include <stdexcept>
 
@@ -61,7 +62,7 @@ LRESULT CALLBACK Win32::messageHandler(HWND hWnd, uint32_t uMsg, WPARAM wParam, 
      EventSystem* eventSystem { nullptr };
      if (uMsg == WM_CREATE) {
           auto pCreate = reinterpret_cast<CREATESTRUCT*>(lParam);
-          eventSystem        = reinterpret_cast<EventSystem*>(pCreate->lpCreateParams);
+          eventSystem  = reinterpret_cast<EventSystem*>(pCreate->lpCreateParams);
           SetWindowLongPtrW(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(pCreate->lpCreateParams));
      }
      else
@@ -88,9 +89,8 @@ LRESULT CALLBACK Win32::messageHandler(HWND hWnd, uint32_t uMsg, WPARAM wParam, 
                // (HIWORD(lParam) & KF_EXTENDED) == KF_EXTENDED;
                return 0;
 
-          case WM_MOUSEMOVE:
-               // GET_X_LPARAM(lParam);
-               // GET_Y_LPARAM(lParam);
+          case WM_MOUSEMOVE: 
+               eventSystem->mouseMoveDispatcher.signal(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
                break;
           case WM_MOUSEWHEEL:
                break;
