@@ -4,6 +4,8 @@
 
 #include <stdexcept>
 #include <vector>
+#define FMT_HEADER_ONLY
+#include <fmt/format.h>
 
 class Core {
   public:
@@ -53,5 +55,6 @@ Core::Core() {
 }
 
 Core::~Core() {
+     fmt::print("Core destructor\n");
      vkDestroyInstance(instance_, nullptr);
 }

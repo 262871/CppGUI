@@ -19,6 +19,8 @@ if __name__ == "__main__":
     includes = [
         "-IC:\\src\\fmt-8.1.1\\include",
         '-IC:\\src\\VulkanSDK\\Include',
+        '-IC:\\src\\glm',
+        '-IC:\\src\\tinyobjloader',
         '-IC:\\src\\volk'
     ]
     link = []

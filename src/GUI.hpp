@@ -5,6 +5,8 @@
 
 #include <fmt/xchar.h>
 
+#include <chrono>
+#include <thread>
 #include <memory>
 #include <string>
 #include <vector>
@@ -30,15 +32,16 @@ class Window {
 
      bool shouldClose() const { return shouldClose_; }
 
-  private:
      std::wstring windowName_;
      EventSystem  eventSystem_;
      bool         shouldClose_ { false };
-     Frame<Win32> frame_;
-     Renderer     renderer_;
 
      std::unique_ptr<EventDispatcher<std::function<void()>>::Subscription>                   onClose_;
      //std::unique_ptr<EventDispatcher<std::function<void(int, int)>, int, int>::Subscription> onMouseMove_;
+     
+     Frame<Win32> frame_;
+     Renderer     renderer_;
+  private:
 };
 
 class GUI {
@@ -53,6 +56,7 @@ class GUI {
      void shutdown() {
      }
      void initialize() {
+          loadModel();
           auto name = L"Vulkan and win32";
           windows_.emplace_back(std::make_unique<Window>(name, &win32_, &core_));
           // name = L"Second window";
@@ -62,7 +66,10 @@ class GUI {
           initialize();
           while (!windows_.empty()) {
                win32_.processMessages();
+               for (auto& window : windows_)
+                    window->renderer_.tryDrawFrame();
                std::erase_if(windows_, [](const auto& w) { return w->shouldClose(); });
+               std::this_thread::sleep_for(std::chrono::milliseconds(16));
           }
      }
 

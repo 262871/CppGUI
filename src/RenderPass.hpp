@@ -25,6 +25,8 @@ class RenderPass {
      void end(CommandBuffer* commandBuffer) {
           vkCmdEndRenderPass(commandBuffer->get());
      }
+     
+     auto get() { return renderPass_; } 
 
      RenderPass(Device* device, Core* core, Swapchain* swapchain)
         : device_(device)
@@ -128,6 +130,7 @@ class RenderPass {
           createFramebuffers();
      }
      ~RenderPass() {
+          fmt::print("RenderPass destructor\n");
           vkDestroyRenderPass(device_->logical(), renderPass_, core_->allocator());
           for (auto framebuffer : framebuffers_)
                vkDestroyFramebuffer(device_->logical(), framebuffer, core_->allocator());
