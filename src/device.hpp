@@ -75,6 +75,7 @@ Device::Device(Core* core)
      VkPhysicalDeviceFeatures physicalDeviceFeatures {};
      physicalDeviceFeatures.samplerAnisotropy = VK_TRUE;
      physicalDeviceFeatures.sampleRateShading = VK_TRUE;
+     physicalDeviceFeatures.fillModeNonSolid = VK_TRUE;
 
      VkDeviceCreateInfo device_create_info {
           .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
@@ -95,6 +96,5 @@ Device::Device(Core* core)
 }
 
 Device::~Device() {
-     fmt::print("Device destructor\n");
      vkDestroyDevice(device_, core_->allocator());
 }

@@ -66,4 +66,11 @@ class EventSystem {
   public:
      EventDispatcher<std::function<void(void)>> closeDispatcher;
      EventDispatcher<std::function<void(int, int)>, int, int> mouseMoveDispatcher;
+     enum MouseButton {
+          LEFT,
+          MIDDLE,
+          RIGHT
+     };
+     EventDispatcher<std::function<void(MouseButton, int, int)>, MouseButton, int, int> mouseButtonDispatcher;
+     EventDispatcher<std::function<void(int, int)>, int, int> resizeDispatcher;
 };

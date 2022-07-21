@@ -4,15 +4,13 @@
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
      GUI gui;
-     try
-     {
-     gui.run();
+     try {
+          gui.run();
           /* code */
      }
-     catch(const std::exception& e)
-     {
+     catch (const std::exception& e) {
           fmt::print("exception: {}\n", e.what());
      }
-     
+
      return 0;
 }

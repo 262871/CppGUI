@@ -11,17 +11,18 @@
 class Swapchain {
   public:
      static Swapchain make(Surface* surface, Device* device, Core* core) {
-          VkSurfaceCapabilitiesKHR capabilities;
-          if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device->physical(), surface->surfaceKHR(), &capabilities) != VK_SUCCESS)
+          VkSurfaceCapabilitiesKHR surfaceCapabilities;
+          if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device->physical(), surface->surfaceKHR(), &surfaceCapabilities) != VK_SUCCESS)
                throw std::runtime_error("call to vkGetPhysicalDeviceSurfaceCapabilitiesKHR failed");
-
-          fmt::print("capabilities.currentExtent: {}, {}\n", capabilities.currentExtent.width, capabilities.currentExtent.height);
+               
+          fmt::print("capabilities.currentExtent: {}, {}\n", surfaceCapabilities.currentExtent.width, surfaceCapabilities.currentExtent.height);
+               
           // -------------------------------------------------------------------------------------------------------------------//
           ImageResource2D::ImageConf iColorConf {
                .format           = VK_FORMAT_B8G8R8A8_SRGB,
-               .extent           = capabilities.currentExtent,
+               .extent           = surfaceCapabilities.currentExtent,
                .mipLevels        = 1,
-               .msaa             = VK_SAMPLE_COUNT_4_BIT,
+               .msaa             = VK_SAMPLE_COUNT_1_BIT,
                .tiling           = VK_IMAGE_TILING_OPTIMAL,
                .usage            = VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
                .memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
@@ -32,9 +33,9 @@ class Swapchain {
           // -------------------------------------------------------------------------------------------------------------------//
           ImageResource2D::ImageConf iDepthConf {
                .format           = VK_FORMAT_D32_SFLOAT,
-               .extent           = capabilities.currentExtent,
+               .extent           = surfaceCapabilities.currentExtent,
                .mipLevels        = 1,
-               .msaa             = VK_SAMPLE_COUNT_4_BIT,
+               .msaa             = VK_SAMPLE_COUNT_1_BIT,
                .tiling           = VK_IMAGE_TILING_OPTIMAL,
                .usage            = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
                .memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
@@ -42,14 +43,56 @@ class Swapchain {
           ImageResource2D::ViewConf vDepthConf { .aspect = VK_IMAGE_ASPECT_DEPTH_BIT };
           // -------------------------------------------------------------------------------------------------------------------//
 
-          return Swapchain(surface, device, core, capabilities, iColorConf, vColorConf, iDepthConf, vDepthConf);
+          return Swapchain(surface, device, core, surfaceCapabilities, iColorConf, vColorConf, iDepthConf, vDepthConf);
      }
+     void update(Surface* surface) {
+          for (auto& image_view : swapchainImageViews_)
+               vkDestroyImageView(device_->logical(), image_view, core_->allocator());
+          swapchainImageViews_.clear();
+          vkDestroySwapchainKHR(device_->logical(), swapchain_, core_->allocator());
+          
+          VkSurfaceCapabilitiesKHR surfaceCapabilities;
+          if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device_->physical(), surface->surfaceKHR(), &surfaceCapabilities) != VK_SUCCESS)
+               throw std::runtime_error("call to vkGetPhysicalDeviceSurfaceCapabilitiesKHR failed");
+          
+          swapchainExtent_ = surfaceCapabilities.currentExtent;
+          
+          // -------------------------------------------------------------------------------------------------------------------//
+          ImageResource2D::ImageConf iColorConf {
+               .format           = VK_FORMAT_B8G8R8A8_SRGB,
+               .extent           = surfaceCapabilities.currentExtent,
+               .mipLevels        = 1,
+               .msaa             = VK_SAMPLE_COUNT_1_BIT,
+               .tiling           = VK_IMAGE_TILING_OPTIMAL,
+               .usage            = VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+               .memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+          };
+          ImageResource2D::ViewConf vColorConf { .aspect = VK_IMAGE_ASPECT_COLOR_BIT };
+          // -------------------------------------------------------------------------------------------------------------------//
 
+          // -------------------------------------------------------------------------------------------------------------------//
+          ImageResource2D::ImageConf iDepthConf {
+               .format           = VK_FORMAT_D32_SFLOAT,
+               .extent           = surfaceCapabilities.currentExtent,
+               .mipLevels        = 1,
+               .msaa             = VK_SAMPLE_COUNT_1_BIT,
+               .tiling           = VK_IMAGE_TILING_OPTIMAL,
+               .usage            = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+               .memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+          };
+          ImageResource2D::ViewConf vDepthConf { .aspect = VK_IMAGE_ASPECT_DEPTH_BIT };
+          // -------------------------------------------------------------------------------------------------------------------//
+          
+          colorResource_.resize(iColorConf, vColorConf);
+          depthResource_.resize(iDepthConf, vDepthConf);
+          createSwapchain(surface, surfaceCapabilities);
+          initializeSwapchainImages();
+          createImageViews();
+     }
      ~Swapchain() {
           for (auto& image_view : swapchainImageViews_)
                vkDestroyImageView(device_->logical(), image_view, core_->allocator());
           swapchainImageViews_.clear();
-
           vkDestroySwapchainKHR(device_->logical(), swapchain_, core_->allocator());
      }
 
@@ -89,8 +132,8 @@ class Swapchain {
      Swapchain(Surface* surface, Device* device, Core* core, const VkSurfaceCapabilitiesKHR& caps, ImageResource2D::ImageConf iColorConf, ImageResource2D::ViewConf vColorConf, ImageResource2D::ImageConf iDepthConf, ImageResource2D::ViewConf vDepthConf)
         : device_(device)
         , core_(core)
-        , swapchainExtent_(iColorConf.extent)
-        , swapchainFormat_(iColorConf.format)
+        , swapchainExtent_(caps.currentExtent)
+        , swapchainFormat_(VK_FORMAT_B8G8R8A8_SRGB)
         , colorResource_(device_, core_, iColorConf, vColorConf)
         , depthResource_(device_, core_, iDepthConf, vDepthConf) {
           createSwapchain(surface, caps);

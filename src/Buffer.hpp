@@ -2,7 +2,7 @@
 
 #include "CommandPool.hpp"
 #include "Core.hpp"
-#include "Data.hpp"
+#include "Vertex.hpp"
 #include "Device.hpp"
 
 #include <glm/glm.hpp>
@@ -94,6 +94,7 @@ class Buffer {
           transferBuffer.write(vertecies.data());
           auto [vertBuffer, vertBufferMemory] = createBuffer(core, device, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
           auto buffer = Buffer(core, device, commandPool, vertBuffer, vertBufferMemory, vertecies.size());
+          buffer.copyFrom(transferBuffer);
           return buffer;
      }
      static Buffer makeIndex(Core* core, Device* device, CommandPool* commandPool, std::vector<uint32_t>& indecies) {
@@ -103,6 +104,7 @@ class Buffer {
           transferBuffer.write(indecies.data());
           auto [idxBuffer, idxBufferMemory] = createBuffer(core, device, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
           auto buffer = Buffer(core, device, commandPool, idxBuffer, idxBufferMemory, indecies.size());
+          buffer.copyFrom(transferBuffer);
           return buffer;
      }
 
@@ -122,7 +124,7 @@ class Buffer {
                     .dstOffset = 0,
                     .size      = size_
                };
-               vkCmdCopyBuffer(commandBuffer, src, buffer_, 1, &copyRegion);
+               vkCmdCopyBuffer(commandBuffer, src.get(), buffer_, 1, &copyRegion);
           },
              Device::QueuePriority::TRANSFER_MEDIUM);
      }
@@ -147,14 +149,11 @@ class Buffer {
           return *this;
      }
      ~Buffer() {
-          fmt::print("Buffer destructor\n");
           if (bufferMemory_ != nullptr) {
                vkFreeMemory(device_->logical(), bufferMemory_, core_->allocator());
-               fmt::print("Memory destroyed\n");
           }
           if (buffer_ != nullptr) {
                vkDestroyBuffer(device_->logical(), buffer_, core_->allocator());
-               fmt::print("Buffer destroyed\n");
           }
      }
 };

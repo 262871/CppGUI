@@ -26,6 +26,18 @@ class ImageResource2D {
           createMemory(iConf.memoryProperties);
           createImageView(vConf.aspect);
      }
+     
+     void resize(const ImageConf& iConf, const ViewConf& vConf) {
+          if (device_ != nullptr) {
+               vkDestroyImageView(device_->logical(), imageView_, core_->allocator());
+               vkDestroyImage(device_->logical(), image_, core_->allocator());
+               vkFreeMemory(device_->logical(), memory_, core_->allocator());
+          }
+          extent_ = iConf.extent;
+          createImage(iConf);
+          createMemory(iConf.memoryProperties);
+          createImageView(vConf.aspect);
+     }
 
      ~ImageResource2D() {
           if (device_ != nullptr) {

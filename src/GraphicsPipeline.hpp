@@ -2,7 +2,7 @@
 
 #include "CommandPool.hpp"
 #include "Core.hpp"
-#include "Data.hpp"
+#include "Vertex.hpp"
 #include "DescriptorSets.hpp"
 #include "Device.hpp"
 #include "RenderPass.hpp"
@@ -12,36 +12,44 @@
 #include <tuple>
 
 class GraphicsPipeline {
-  public:
-     GraphicsPipeline(Core* core, Device* device, Swapchain* swapchain, RenderPass* renderPass, DescriptorSetLayout* descriptorSetLayout)
-     : core_(core)
-     , device_(device)
-     , swapchain_(swapchain)
-     , renderPass_(renderPass)
-     , descriptorSetLayout_(descriptorSetLayout) {
-          std::vector<uint32_t>    vertShaderCode = formattedSPIRV("./shaders/shader.vert.spv");
+     static std::vector<char> readFile(const std::string& filename) {
+          std::ifstream file(filename, std::ios::ate | std::ios::binary);
+          if (!file.is_open())
+               throw std::runtime_error("failed to open file!");
+
+          size_t            fileSize = (size_t)file.tellg();
+          std::vector<char> buffer(fileSize);
+
+          file.seekg(0);
+          file.read(buffer.data(), fileSize);
+          file.close();
+
+          return buffer;
+     }
+     VkShaderModule createShaderModule(const std::vector<char>& shaderCode) {
           VkShaderModuleCreateInfo vertShaderModuleCreateInfo {
                .sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
                .pNext    = nullptr,
                .flags    = {},
-               .codeSize = static_cast<uint32_t>(vertShaderCode.size()) * 4,
-               .pCode    = vertShaderCode.data()
+               .codeSize = static_cast<uint32_t>(shaderCode.size()),
+               .pCode    = reinterpret_cast<const uint32_t*>(shaderCode.data())
           };
-          VkShaderModule vertShaderModule {};
-          if (vkCreateShaderModule(device_->logical(), &vertShaderModuleCreateInfo, core_->allocator(), &vertShaderModule) != VK_SUCCESS)
+          VkShaderModule shaderModule;
+          if (vkCreateShaderModule(device_->logical(), &vertShaderModuleCreateInfo, core_->allocator(), &shaderModule) != VK_SUCCESS)
                throw std::runtime_error("call to vkCreateShaderModule failed");
+          return shaderModule;
+     }
 
-          std::vector<uint32_t>    fragShaderCode = formattedSPIRV("./shaders/shader.frag.spv");
-          VkShaderModuleCreateInfo fragShaderModuleCreateInfo {
-               .sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-               .pNext    = nullptr,
-               .flags    = {},
-               .codeSize = static_cast<uint32_t>(fragShaderCode.size()) * 4,
-               .pCode    = fragShaderCode.data()
-          };
-          VkShaderModule fragShaderModule {};
-          if (vkCreateShaderModule(device_->logical(), &fragShaderModuleCreateInfo, core_->allocator(), &fragShaderModule) != VK_SUCCESS)
-               throw std::runtime_error("call to vkCreateShaderModule failed");
+  public:
+     GraphicsPipeline(Core* core, Device* device, RenderPass* renderPass , DescriptorSetLayout* descriptorSetLayout)
+        : core_(core)
+        , device_(device)
+        , renderPass_(renderPass)
+     , descriptorSetLayout_(descriptorSetLayout) {
+          std::vector<char> vertShaderCode   = readFile("./shaders/shader.vert.spv");
+          VkShaderModule    vertShaderModule = createShaderModule(vertShaderCode);
+          std::vector<char> fragShaderCode   = readFile("./shaders/shader.frag.spv");
+          VkShaderModule    fragShaderModule = createShaderModule(fragShaderCode);
 
           std::vector<VkPipelineShaderStageCreateInfo> shaderStages {
                VkPipelineShaderStageCreateInfo {
@@ -61,21 +69,7 @@ class GraphicsPipeline {
                   .pName               = "main",
                   .pSpecializationInfo = nullptr }
           };
-          auto extent = swapchain_->extent();
 
-          VkViewport viewport {
-               .x        = 0.f,
-               .y        = 0.f,
-               .width    = static_cast<float>(extent.width),
-               .height   = static_cast<float>(extent.height),
-               .minDepth = 0.f,
-               .maxDepth = 1.f
-          };
-
-          VkRect2D scissorRect {
-               .offset = { 0, 0 },
-               .extent = extent
-          };
           auto bindingDescription    = Vertex::bindingDescription();
           auto attributeDescriptions = Vertex::attributeDescriptions();
 
@@ -92,7 +86,7 @@ class GraphicsPipeline {
                .sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
                .pNext                  = nullptr,
                .flags                  = {},
-               .topology               = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+               .topology               = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
                .primitiveRestartEnable = VK_FALSE
           };
           VkPipelineViewportStateCreateInfo vkPipelineViewportStateCreateInfo {
@@ -100,9 +94,9 @@ class GraphicsPipeline {
                .pNext         = nullptr,
                .flags         = {},
                .viewportCount = 1,
-               .pViewports    = &viewport,
+               .pViewports    = nullptr,
                .scissorCount  = 1,
-               .pScissors     = &scissorRect
+               .pScissors     = nullptr
           };
           VkPipelineRasterizationStateCreateInfo vkPipelineRasterizationStateCreateInfo {
                .sType                   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
@@ -123,7 +117,7 @@ class GraphicsPipeline {
                .sType                 = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
                .pNext                 = nullptr,
                .flags                 = {},
-               .rasterizationSamples  = VK_SAMPLE_COUNT_4_BIT,
+               .rasterizationSamples  = VK_SAMPLE_COUNT_1_BIT,
                .sampleShadingEnable   = VK_TRUE,
                .minSampleShading      = 0.5f,
                .pSampleMask           = nullptr,
@@ -131,12 +125,12 @@ class GraphicsPipeline {
                .alphaToOneEnable      = VK_FALSE
           };
           VkPipelineColorBlendAttachmentState vkPipelineColorBlendAttachmentState {
-               .blendEnable         = VK_FALSE,
-               .srcColorBlendFactor = VK_BLEND_FACTOR_ONE,
-               .dstColorBlendFactor = VK_BLEND_FACTOR_ZERO,
+               .blendEnable         = VK_TRUE,
+               .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+               .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
                .colorBlendOp        = VK_BLEND_OP_ADD,
-               .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
-               .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+               .srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+               .dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
                .alphaBlendOp        = VK_BLEND_OP_ADD,
                .colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT
           };
@@ -164,10 +158,23 @@ class GraphicsPipeline {
                .pAttachments    = &vkPipelineColorBlendAttachmentState,
                .blendConstants  = { 0.f, 0.f, 0.f, 0.f }
           };
+
+          std::vector<VkDynamicState> dynamicStates = {
+               VK_DYNAMIC_STATE_VIEWPORT,
+               VK_DYNAMIC_STATE_SCISSOR
+          };
+          VkPipelineDynamicStateCreateInfo pipelineDynamicStateCreateInfo {
+               .sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+               .pNext             = nullptr,
+               .flags             = {},
+               .dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()),
+               .pDynamicStates    = dynamicStates.data(),
+          };
+
           VkPipelineLayoutCreateInfo vkPipelineLayoutCreateInfo {
-               .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-               .pNext                  = nullptr,
-               .flags                  = {},
+               .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+               .pNext = nullptr,
+               .flags = {},
                .setLayoutCount         = 1,
                .pSetLayouts            = &descriptorSetLayout_->get(),
                .pushConstantRangeCount = 0,
@@ -190,12 +197,12 @@ class GraphicsPipeline {
                .pMultisampleState   = &vkPipelineMultisampleStateCreateInfo,
                .pDepthStencilState  = &vkPipelineDepthStencilStateCreateInfo,
                .pColorBlendState    = &vkPipelineColorBlendStateCreateInfo,
-               .pDynamicState       = nullptr,
+               .pDynamicState       = &pipelineDynamicStateCreateInfo,
                .layout              = pipelineLayout_,
                .renderPass          = renderPass_->get(),
                .subpass             = 0u,
                .basePipelineHandle  = {},
-               .basePipelineIndex   = -1
+               .basePipelineIndex   = 0
           };
           if (vkCreateGraphicsPipelines(device_->logical(), {}, 1u, &vkGraphicsPipelineCreateInfo, core_->allocator(), &pipeline_) != VK_SUCCESS)
                throw std::runtime_error("call to vkCreateGraphicsPipelines failed");
@@ -207,32 +214,15 @@ class GraphicsPipeline {
           vkDestroyPipeline(device_->logical(), pipeline_, core_->allocator());
           vkDestroyPipelineLayout(device_->logical(), pipelineLayout_, core_->allocator());
      }
-     
+
      auto& pipeline() { return pipeline_; }
      auto& layout() { return pipelineLayout_; }
-     
+
   private:
-     static std::vector<uint32_t> formattedSPIRV(std::string file_name) {
-          std::basic_ifstream<char> file(file_name, std::ios::ate | std::ios::binary);
-          if (!file.is_open())
-               throw std::runtime_error("failed to open file \"" + file_name + "\"");
-
-          const size_t fpos = static_cast<size_t>(file.tellg());
-
-          std::vector<uint32_t> buffer(fpos / sizeof(uint32_t));
-
-          file.seekg(0);
-          file.read(reinterpret_cast<char*>(buffer.data()), fpos);
-          file.close();
-
-          return buffer;
-     }
-
-     Core*                core_;
-     Device*              device_;
-     Swapchain*           swapchain_;
-     RenderPass*          renderPass_;
+     Core*       core_;
+     Device*     device_;
+     RenderPass* renderPass_;
      DescriptorSetLayout* descriptorSetLayout_;
-     VkPipelineLayout     pipelineLayout_;
-     VkPipeline           pipeline_;
+     VkPipelineLayout pipelineLayout_;
+     VkPipeline       pipeline_;
 };

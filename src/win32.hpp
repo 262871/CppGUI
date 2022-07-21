@@ -77,10 +77,11 @@ LRESULT CALLBACK Win32::messageHandler(HWND hWnd, uint32_t uMsg, WPARAM wParam, 
           case WM_DESTROY:
                PostQuitMessage(0);
                return 0;
-          case WM_SIZE:
-               // RECT r;
-               // GetClientRect(hWnd, &r);
-               break;
+          case WM_SIZE: {
+               RECT r;
+               GetClientRect(hWnd, &r);
+               eventSystem->resizeDispatcher.signal(r.right - r.left, r.bottom - r.top);
+          } break;
           case WM_KEYDOWN:
           case WM_SYSKEYDOWN:
           case WM_KEYUP:
@@ -89,7 +90,7 @@ LRESULT CALLBACK Win32::messageHandler(HWND hWnd, uint32_t uMsg, WPARAM wParam, 
                // (HIWORD(lParam) & KF_EXTENDED) == KF_EXTENDED;
                return 0;
 
-          case WM_MOUSEMOVE: 
+          case WM_MOUSEMOVE:
                eventSystem->mouseMoveDispatcher.signal(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
                break;
           case WM_MOUSEWHEEL:
@@ -100,6 +101,7 @@ LRESULT CALLBACK Win32::messageHandler(HWND hWnd, uint32_t uMsg, WPARAM wParam, 
           case WM_LBUTTONUP:
           case WM_MBUTTONUP:
           case WM_RBUTTONUP:
+               eventSystem->mouseButtonDispatcher.signal(EventSystem::MouseButton::LEFT, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
                // WM_LBUTTONDOWN || msg == WM_RBUTTONDOWN || msg == WM_MBUTTONDOWN;
                break;
      }

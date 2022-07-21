@@ -55,6 +55,5 @@ Core::Core() {
 }
 
 Core::~Core() {
-     fmt::print("Core destructor\n");
      vkDestroyInstance(instance_, nullptr);
 }

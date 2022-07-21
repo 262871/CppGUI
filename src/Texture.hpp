@@ -4,6 +4,7 @@
 #include "CommandPool.hpp"
 #include "Core.hpp"
 #include "Device.hpp"
+#include "Data.hpp"
 
 const auto TEXTURE_PATH = "textures\\viking_room.png";
 class Texture {
@@ -160,7 +161,7 @@ class Texture {
           if (!(properties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT))
                throw std::runtime_error("texture image format does not support linear blitting in generateMipmaps");
 
-          commandPool_->singleTimeCommand([this, &properties](auto commandBuffer) {
+          commandPool_->singleTimeCommand([this](auto commandBuffer) {
                VkImageMemoryBarrier barrier {
                     .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
                     .pNext               = nullptr,

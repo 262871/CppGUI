@@ -6,13 +6,13 @@
 template <typename T>
 class Frame {
   public:
-     Frame(T::frame_handle handle) { handle_ = handle; }
+     Frame(typename T::frame_handle handle) { handle_ = handle; }
      ~Frame() { T::destroyFrame(handle_); }
 
-     T::frame_handle handle() { return handle_; }
+     typename T::frame_handle handle() { return handle_; }
 
   private:
-     T::frame_handle handle_;
+     typename T::frame_handle handle_;
 };
 
 class Surface {

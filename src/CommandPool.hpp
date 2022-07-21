@@ -159,7 +159,6 @@ void CommandBuffer::end() {
           throw std::runtime_error("call to vkEndCommandBuffer failed");
 }
 CommandBuffer::~CommandBuffer() {
-          fmt::print("CommandBuffer destructor\n");
      if (commandBuffer_)
           commandPool_->free(this);
 }
