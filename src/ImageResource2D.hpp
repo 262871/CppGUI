@@ -17,14 +17,14 @@ class ImageResource2D {
      struct ViewConf {
           VkImageAspectFlags aspect;
      };
-     ImageResource2D(Device* device, Core* core, const ImageConf& iConf, const ViewConf& vConf)
-        : device_(device)
-        , core_(core)
-        , extent_(iConf.extent)
-        , format_(iConf.format) {
-          createImage(iConf);
-          createMemory(iConf.memoryProperties);
-          createImageView(vConf.aspect);
+     ImageResource2D(Core* core, Device* device, const ImageConf& iConf, const ViewConf& vConf)
+        : core_(core)
+        , device_(device)
+        , iConf_(iConf)
+        , vConf_(vConf) {
+          createImage();
+          createMemory();
+          createImageView();
      }
      
      void resize(const ImageConf& iConf, const ViewConf& vConf) {
@@ -33,10 +33,11 @@ class ImageResource2D {
                vkDestroyImage(device_->logical(), image_, core_->allocator());
                vkFreeMemory(device_->logical(), memory_, core_->allocator());
           }
-          extent_ = iConf.extent;
-          createImage(iConf);
-          createMemory(iConf.memoryProperties);
-          createImageView(vConf.aspect);
+          iConf_ = iConf;
+          vConf_ = vConf;
+          createImage();
+          createMemory();
+          createImageView();
      }
 
      ~ImageResource2D() {
@@ -48,25 +49,26 @@ class ImageResource2D {
      }
 
      auto view() { return imageView_; }
-     auto format() { return format_; }
+     auto format() { return iConf_.format; }
+     auto msaa() { return iConf_.msaa; }
 
   private:
-     void createImage(ImageConf iConf) {
+     void createImage() {
           VkImageCreateInfo image_create_info {
                .sType     = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
                .pNext     = nullptr,
                .flags     = {},
                .imageType = VK_IMAGE_TYPE_2D,
-               .format    = format_,
+               .format    = iConf_.format,
                .extent    = {
-                     .width  = extent_.width,
-                     .height = extent_.height,
+                     .width  = iConf_.extent.width,
+                     .height = iConf_.extent.height,
                      .depth  = 1 },
-               .mipLevels             = iConf.mipLevels,
+               .mipLevels             = iConf_.mipLevels,
                .arrayLayers           = 1,
-               .samples               = iConf.msaa,
-               .tiling                = iConf.tiling,
-               .usage                 = iConf.usage,
+               .samples               = iConf_.msaa,
+               .tiling                = iConf_.tiling,
+               .usage                 = iConf_.usage,
                .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
                .queueFamilyIndexCount = 0,
                .pQueueFamilyIndices   = nullptr,
@@ -76,59 +78,59 @@ class ImageResource2D {
                throw std::runtime_error("call to vkCreateImage failed");
      }
 
-     uint32_t findMemoryIndex(uint32_t type_bits, VkMemoryPropertyFlags memory_property_flags) {
-          VkPhysicalDeviceMemoryProperties physical_mem_props {};
-          vkGetPhysicalDeviceMemoryProperties(device_->physical(), &physical_mem_props);
+     uint32_t findMemoryIndex(uint32_t typeBits, VkMemoryPropertyFlags memoryPropertyFlags) {
+          VkPhysicalDeviceMemoryProperties physicalDeviceMemoryProperties {};
+          vkGetPhysicalDeviceMemoryProperties(device_->physical(), &physicalDeviceMemoryProperties);
 
-          for (uint32_t i { 0 }; i != physical_mem_props.memoryTypeCount; ++i)
-               if (type_bits & (0b1 << i) && (physical_mem_props.memoryTypes[i].propertyFlags & memory_property_flags) == memory_property_flags)
+          for (uint32_t i { 0 }; i != physicalDeviceMemoryProperties.memoryTypeCount; ++i)
+               if (typeBits & (0b1 << i) && (physicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & memoryPropertyFlags) == memoryPropertyFlags)
                     return i;
 
           throw std::runtime_error("call to findMemory type failed to find memory");
      }
-     void createMemory(VkMemoryPropertyFlags memoryProperties) {
-          VkMemoryRequirements memory_requirements;
-          vkGetImageMemoryRequirements(device_->logical(), image_, &memory_requirements);
+     void createMemory() {
+          VkMemoryRequirements memoryRequirements;
+          vkGetImageMemoryRequirements(device_->logical(), image_, &memoryRequirements);
 
-          VkMemoryAllocateInfo memory_allocate_info {
+          VkMemoryAllocateInfo memoryAllocateInfo {
                .sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
                .pNext           = nullptr,
-               .allocationSize  = memory_requirements.size,
-               .memoryTypeIndex = findMemoryIndex(memory_requirements.memoryTypeBits, memoryProperties)
+               .allocationSize  = memoryRequirements.size,
+               .memoryTypeIndex = findMemoryIndex(memoryRequirements.memoryTypeBits, iConf_.memoryProperties)
           };
 
-          if (vkAllocateMemory(device_->logical(), &memory_allocate_info, core_->allocator(), &memory_) != VK_SUCCESS)
+          if (vkAllocateMemory(device_->logical(), &memoryAllocateInfo, core_->allocator(), &memory_) != VK_SUCCESS)
                throw std::runtime_error("call to vkAllocateMemory failed");
 
           if (vkBindImageMemory(device_->logical(), image_, memory_, 0) != VK_SUCCESS)
                throw std::runtime_error("call to vkBindImageMemory failed");
      }
-     void createImageView(VkImageAspectFlags aspect_flags, uint32_t mipLevels = 1) {
+     void createImageView(uint32_t mipLevels = 1) {
           VkImageSubresourceRange subresource {
-               .aspectMask     = aspect_flags,
+               .aspectMask     = vConf_.aspect,
                .baseMipLevel   = 0,
                .levelCount     = mipLevels,
                .baseArrayLayer = 0,
                .layerCount     = 1
           };
-          VkImageViewCreateInfo image_view_create_info {
+          VkImageViewCreateInfo imageViewCreateInfo {
                .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                .pNext            = nullptr,
                .flags            = {},
                .image            = image_,
                .viewType         = VK_IMAGE_VIEW_TYPE_2D,
-               .format           = format_,
+               .format           = iConf_.format,
                .components       = {},
                .subresourceRange = subresource
           };
-          if (vkCreateImageView(device_->logical(), &image_view_create_info, core_->allocator(), &imageView_) != VK_SUCCESS)
+          if (vkCreateImageView(device_->logical(), &imageViewCreateInfo, core_->allocator(), &imageView_) != VK_SUCCESS)
                throw std::runtime_error("call to vkCreateImageView failed");
      }
 
-     Device*        device_;
      Core*          core_;
-     VkExtent2D     extent_;
-     VkFormat       format_;
+     Device*        device_;
+     ImageConf      iConf_;
+     ViewConf       vConf_;
      VkImage        image_;
      VkDeviceMemory memory_;
      VkImageView    imageView_;

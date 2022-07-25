@@ -16,11 +16,6 @@ class DescriptorSetLayout {
         , device_(device) {
           std::vector<VkDescriptorSetLayoutBinding> bindings {
                { .binding             = 0,
-                  .descriptorType     = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                  .descriptorCount    = 1,
-                  .stageFlags         = VK_SHADER_STAGE_VERTEX_BIT,
-                  .pImmutableSamplers = nullptr },
-               { .binding             = 1,
                   .descriptorType     = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                   .descriptorCount    = 1,
                   .stageFlags         = VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -48,43 +43,35 @@ class DescriptorPool {
      Device*                      device_;
      DescriptorSetLayout*         descriptorSetLayout_;
      VkDescriptorPool             descriptorPool_;
-     std::vector<VkDescriptorSet> descriptorSets_;
 
   public:
-     DescriptorPool(Core* core, Device* device, DescriptorSetLayout* descriptorSetLayout, size_t maxFramesInFlight, std::vector<Buffer<UniformBufferObject>>& uniformBuffers, Texture* texture)
+     DescriptorPool(Core* core, Device* device, DescriptorSetLayout* descriptorSetLayout)
         : core_(core)
         , device_(device)
         , descriptorSetLayout_(descriptorSetLayout) {
           std::vector<VkDescriptorPoolSize> descriptorPoolSizes {
-               { .type             = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                  .descriptorCount = static_cast<uint32_t>(maxFramesInFlight) },
                { .type             = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                  .descriptorCount = static_cast<uint32_t>(maxFramesInFlight) }
+                  .descriptorCount = static_cast<uint32_t>(2) }
           };
-
           VkDescriptorPoolCreateInfo descriptorPoolCreateInfo {
                .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
                .pNext         = nullptr,
                .flags         = {},
-               .maxSets       = static_cast<uint32_t>(maxFramesInFlight),
+               .maxSets       = static_cast<uint32_t>(2),
                .poolSizeCount = static_cast<uint32_t>(descriptorPoolSizes.size()),
                .pPoolSizes    = descriptorPoolSizes.data()
           };
-
           if (vkCreateDescriptorPool(device_->logical(), &descriptorPoolCreateInfo, core_->allocator(), &descriptorPool_) != VK_SUCCESS)
                throw std::runtime_error("call to vkCreateDescriptorPool failed");
-
-          createDescriptorSets(maxFramesInFlight, uniformBuffers, texture);
      }
 
      ~DescriptorPool() {
           vkDestroyDescriptorPool(device_->logical(), descriptorPool_, core_->allocator());
      }
      
-     auto& descriptorSet(size_t index) { return descriptorSets_[index]; }
 
-  private:
-     void createDescriptorSets(size_t maxFramesInFlight, std::vector<Buffer<UniformBufferObject>>& uniformBuffers, Texture* texture) {
+     auto createDescriptorSets(size_t maxFramesInFlight, Texture* texture) {
+          std::vector<VkDescriptorSet> descriptorSets(maxFramesInFlight);
           std::vector<VkDescriptorSetLayout> descriptorSetLayouts(maxFramesInFlight, descriptorSetLayout_->get());
           VkDescriptorSetAllocateInfo        descriptorSetAllocateInfo {
                       .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
@@ -93,36 +80,21 @@ class DescriptorPool {
                       .descriptorSetCount = static_cast<uint32_t>(maxFramesInFlight),
                       .pSetLayouts        = descriptorSetLayouts.data()
           };
-          descriptorSets_.reserve(maxFramesInFlight);
-          if (vkAllocateDescriptorSets(device_->logical(), &descriptorSetAllocateInfo, descriptorSets_.data()) != VK_SUCCESS)
+          
+          if (vkAllocateDescriptorSets(device_->logical(), &descriptorSetAllocateInfo, descriptorSets.data()) != VK_SUCCESS)
                throw std::runtime_error("call to vkAllocateDescriptorSets failed");
 
           for (size_t i = 0; i != maxFramesInFlight; ++i) {
-               VkDescriptorBufferInfo descriptorBufferInfo {
-                    .buffer = uniformBuffers[i].get(),
-                    .offset = 0,
-                    .range  = sizeof(UniformBufferObject)
-               };
                VkDescriptorImageInfo descriptorImageInfo {
                     .sampler     = texture->sampler(),
                     .imageView   = texture->view(),
                     .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
                };
-               std::vector<VkWriteDescriptorSet> write_descriptor_sets {
+               std::vector<VkWriteDescriptorSet> writeDescriptorSet {
                     { .sType             = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
                        .pNext            = nullptr,
-                       .dstSet           = descriptorSets_[i],
+                       .dstSet           = descriptorSets[i],
                        .dstBinding       = 0,
-                       .dstArrayElement  = 0,
-                       .descriptorCount  = 1,
-                       .descriptorType   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                       .pImageInfo       = nullptr,
-                       .pBufferInfo      = &descriptorBufferInfo,
-                       .pTexelBufferView = nullptr },
-                    { .sType             = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                       .pNext            = nullptr,
-                       .dstSet           = descriptorSets_[i],
-                       .dstBinding       = 1,
                        .dstArrayElement  = 0,
                        .descriptorCount  = 1,
                        .descriptorType   = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -130,7 +102,9 @@ class DescriptorPool {
                        .pBufferInfo      = nullptr,
                        .pTexelBufferView = nullptr }
                };
-               vkUpdateDescriptorSets(device_->logical(), static_cast<uint32_t>(write_descriptor_sets.size()), write_descriptor_sets.data(), 0, nullptr);
+               vkUpdateDescriptorSets(device_->logical(), static_cast<uint32_t>(writeDescriptorSet.size()), writeDescriptorSet.data(), 0, nullptr);
           }
+          return descriptorSets;
      }
+  private:
 };

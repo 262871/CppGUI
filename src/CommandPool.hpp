@@ -42,9 +42,9 @@ class CommandPool {
           return device_->graphics();
      }
   public:
-     CommandPool(Device* device, Core* core)
-        : device_(device)
-        , core_(core) {
+     CommandPool(Core* core, Device* device)
+        : core_(core)
+        , device_(device) {
           VkCommandPoolCreateInfo commandPoolCreateInfo {
                .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
                .pNext            = nullptr,
@@ -135,8 +135,8 @@ class CommandPool {
      }
 
   private:
-     Device*       device_;
      Core*         core_;
+     Device*       device_;
      VkCommandPool commandPool_;
 };
 

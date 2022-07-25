@@ -18,7 +18,8 @@ class Window {
         : windowName_(name)
         , eventSystem_()
         , frame_(win32->createFrame(name, &eventSystem_))
-        , renderer_(core, win32, &frame_) {
+        , surface_(core, win32, &frame_)
+        , renderer_(core, &surface_) {
           // std::vector<Vertex> vertecies {
           //      { .position           = { -.5f, -.5f, 0.1f },
           //         .color             = { 1.f, 1.f, 1.f },
@@ -83,6 +84,7 @@ class Window {
      // std::unique_ptr<EventDispatcher<std::function<void(int, int)>, int, int>::Subscription> onMouseMove_;
 
      Frame<Win32> frame_;
+     Surface surface_;
      Renderer     renderer_;
 
   private:
